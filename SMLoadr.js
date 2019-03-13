@@ -2541,7 +2541,7 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
                             .setFrame('TPE1', [trackMetadata.artists.join(', ')])
                             .setFrame('TRCK', trackMetadata.trackNumberCombined)
                             .setFrame('TPOS', trackMetadata.partOfSetCombined)
-                            .setFrame('WCOP', trackMetadata.copyright)
+                            .setFrame('TCOP', trackMetadata.copyright)
                             .setFrame('TPUB', trackMetadata.publisher.join('/'))
                             .setFrame('TLEN', trackMetadata.duration)
                             .setFrame('TMED', trackMetadata.media)
