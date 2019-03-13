@@ -129,12 +129,6 @@ const downloadSpinner = new ora({
 const unofficialApiUrl = 'https://www.deezer.com/ajax/gw-light.php';
 const ajaxActionUrl = 'https://www.deezer.com/ajax/action.php';
 
-const formLoginData = {
-    type: 'login',
-    mail: null,
-    password: null
-};
-
 let unofficialApiQueries = {
     api_version: '1.0',
     api_token: '',
@@ -458,44 +452,6 @@ function initDeezerCredentials() {
             });
         }
     });
-}
-
-/**
- * Encrypt a deezer password.
- *
- * @param {String} deezerEmail
- * @param {String} unencryptedDeezerPassword
- * @returns {String}
- */
-function encryptDeezerPassword(deezerEmail, unencryptedDeezerPassword) {
-    try {
-        let cipher = crypto.createCipher('aes-256-cbc', deezerEmail + '-SMLoadr');
-        let encryptedPassword = cipher.update(unencryptedDeezerPassword, 'utf-8', 'hex');
-        encryptedPassword += cipher.final('hex');
-
-        return encryptedPassword;
-    } catch (err) {
-        return '';
-    }
-}
-
-/**
- * Decrypt an encrypted deezer password.
- *
- * @param {String} deezerEmail
- * @param {String} encryptedDeezerPassword
- * @returns {String}
- */
-function decryptDeezerPassword(deezerEmail, encryptedDeezerPassword) {
-    try {
-        let decipher = crypto.createDecipher('aes-256-cbc', deezerEmail + '-SMLoadr');
-        let decryptedPassword = decipher.update(encryptedDeezerPassword, 'hex', 'utf-8');
-        decryptedPassword += decipher.final('utf-8');
-
-        return decryptedPassword;
-    } catch (err) {
-        return '';
-    }
 }
 
 /**
