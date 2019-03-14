@@ -2204,7 +2204,6 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
 
     const albumCoverUrl = 'https://e-cdns-images.dzcdn.net/images/cover/' + trackInfos.ALB_PICTURE + '/1400x1400-000000-94-0-0.jpg';
     const albumCoverSavePath = nodePath.dirname(saveFilePath) + '/cover.jpg';
-    const tempAlbumCoverSavePath = albumCoverSavePath + '.temp';
 
     return new Promise((resolve, reject) => {
         // check to make sure there is a cover for this album
@@ -2212,11 +2211,7 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
             reject();
         } else {
         if (!fs.existsSync(albumCoverSavePath)) {
-            if (!fs.existsSync(tempAlbumCoverSavePath)) {
                 log.debug('Started downloading album cover for "track/' + trackInfos.SNG_ID + '". Album cover url: "' + albumCoverUrl + '"');
-
-                ensureDir(tempAlbumCoverSavePath);
-                fs.writeFileSync(tempAlbumCoverSavePath, '');
 
                 requestWithoutCache({
                     url:      albumCoverUrl,
@@ -2226,18 +2221,14 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
                 }).then((response) => {
                     log.debug('Got album cover download response for "track/' + trackInfos.SNG_ID + '"');
 
-                    ensureDir(tempAlbumCoverSavePath);
-
-                    fs.writeFile(tempAlbumCoverSavePath, response, (err) => {
+                    ensureDir(albumCoverSavePath);
+                    fs.writeFile(albumCoverSavePath, response, (err) => {
                         if (err) {
-                            removeTempAlbumCover();
+                            log.debug('Error downloading album cover for "track/' + trackInfos.SNG_ID + '"');
+                            log.debug(err);
                             reject();
                         } else {
                             log.debug('Finished downloading album cover for "track/' + trackInfos.SNG_ID + '"');
-
-                            if (fs.existsSync(tempAlbumCoverSavePath)) {
-                                fs.renameSync(tempAlbumCoverSavePath, albumCoverSavePath);
-                            }
 
                             resolve(albumCoverSavePath);
                         }
@@ -2248,8 +2239,6 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
                             numberRetry += 1;
 
                             setTimeout(() => {
-                                removeTempAlbumCover();
-
                                 downloadAlbumCover(trackInfos, saveFilePath, numberRetry).then((albumCoverSavePath) => {
                                     resolve(albumCoverSavePath);
                                 }).catch(() => {
@@ -2257,23 +2246,12 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
                                 });
                             }, 500);
                         } else {
-                            removeTempAlbumCover();
                             reject();
                         }
                     } else {
-                        removeTempAlbumCover();
                         reject();
                     }
                 });
-            } else {
-                setTimeout(() => {
-                    downloadAlbumCover(trackInfos, saveFilePath, numberRetry).then((albumCoverSavePath) => {
-                        resolve(albumCoverSavePath);
-                    }).catch(() => {
-                        reject();
-                    });
-                }, 500);
-            }
         } else {
             log.debug('Album cover for "track/' + trackInfos.SNG_ID + '" already exists');
 
@@ -2281,12 +2259,6 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
         }
 	}
     });
-
-    function removeTempAlbumCover() {
-        if (fs.existsSync(tempAlbumCoverSavePath)) {
-            fs.unlinkSync(tempAlbumCoverSavePath);
-        }
-    }
 }
 
 /**
