@@ -203,11 +203,6 @@ function initRequest() {
         process.exit(1);
     });
 
-
-    // Ignore HTTPS certificate
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-
     // App info
     console.log(chalk.cyan('╔══════════════════════════════════════════════════════════════════╗'));
     console.log(chalk.cyan('║') + chalk.bold.yellow('                          SMLoadr v' + packageJson.version + '                          ') + chalk.cyan('║'));
@@ -2108,7 +2103,7 @@ function decryptTrack(trackBuffer, trackInfos) {
     let i = 0;
     let position = 0;
 
-    let decryptedBuffer = new Buffer(trackBuffer.length);
+    let decryptedBuffer = Buffer.alloc(trackBuffer.length);
     decryptedBuffer.fill(0);
 
     while (position < trackBuffer.length) {
@@ -2118,14 +2113,14 @@ function decryptTrack(trackBuffer, trackInfos) {
             chunkSize = trackBuffer.length - position;
         }
 
-        let encryptedChunk = new Buffer(chunkSize);
+        let encryptedChunk = Buffer.alloc(chunkSize);
         encryptedChunk.fill(0);
         trackBuffer.copy(encryptedChunk, 0, position, position + chunkSize);
 
         if (i % 3 > 0 || chunkSize < 2048) {
             // Already decrypted
         } else {
-            let cipher = crypto.createDecipheriv('bf-cbc', blowFishKey, new Buffer([0, 1, 2, 3, 4, 5, 6, 7]));
+            let cipher = crypto.createDecipheriv('bf-cbc', blowFishKey, Buffer.from([0, 1, 2, 3, 4, 5, 6, 7]));
 
             cipher.setAutoPadding(false);
             encryptedChunk = cipher.update(encryptedChunk, 'binary', 'binary') + cipher.final();
