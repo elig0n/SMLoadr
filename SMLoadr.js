@@ -49,27 +49,27 @@ let DOWNLOAD_MODE = 'single';
 const log = new Log('debug', fs.createWriteStream('SMLoadr.log'));
 
 const musicQualities = {
-    MP3_128: {
-        id: 1,
-        name: 'MP3 - 128 kbps',
+    MP3_128:  {
+        id:             1,
+        name:           'MP3 - 128 kbps',
         aproxMaxSizeMb: '100'
     },
-    MP3_256: {
-        id: 5,
+    MP3_256:  {
+        id:   5,
         name: 'MP3 - 256 kbps'
     },
-    MP3_320: {
-        id: 3,
-        name: 'MP3 - 320 kbps',
+    MP3_320:  {
+        id:             3,
+        name:           'MP3 - 320 kbps',
         aproxMaxSizeMb: '200'
     },
-    FLAC: {
-        id: 9,
-        name: 'FLAC - 1411 kbps',
+    FLAC:     {
+        id:             9,
+        name:           'FLAC - 1411 kbps',
         aproxMaxSizeMb: '700'
     },
     MP3_MISC: {
-        id: 0,
+        id:   0,
         name: 'User uploaded song'
     }
 };
@@ -78,37 +78,37 @@ let selectedMusicQuality = musicQualities.MP3_320;
 
 const cliOptionDefinitions = [
     {
-        name: 'help',
-        alias: 'h',
+        name:        'help',
+        alias:       'h',
         description: 'Print this usage guide :)'
     },
     {
-        name: 'quality',
-        alias: 'q',
-        type: String,
+        name:         'quality',
+        alias:        'q',
+        type:         String,
         defaultValue: 'MP3_320',
-        description: 'The quality of the files to download: MP3_128/MP3_320/FLAC'
+        description:  'The quality of the files to download: MP3_128/MP3_320/FLAC'
     },
     {
-        name: 'path',
-        alias: 'p',
-        type: String,
+        name:         'path',
+        alias:        'p',
+        type:         String,
         defaultValue: DOWNLOAD_DIR,
-        description: 'The path to download the files to: path with / in the end'
+        description:  'The path to download the files to: path with / in the end'
     },
     {
-        name: 'url',
-        alias: 'u',
-        type: String,
+        name:          'url',
+        alias:         'u',
+        type:          String,
         defaultOption: true,
-        description: 'Downloads single deezer url: album/artist/playlist/profile/track url'
+        description:   'Downloads single deezer url: album/artist/playlist/profile/track url'
     },
     {
-        name: 'downloadmode',
-        alias: 'd',
-        type: String,
+        name:         'downloadmode',
+        alias:        'd',
+        type:         String,
         defaultValue: 'single',
-        description: 'Downloads multiple urls from list: "all" for downloadLinks.txt'
+        description:  'Downloads multiple urls from list: "all" for downloadLinks.txt'
     }
 ];
 
@@ -118,12 +118,12 @@ const isCli = process.argv.length > 2;
 const downloadSpinner = new ora({
     spinner: {
         interval: 400,
-        frames: [
+        frames:   [
             '♫',
             ' '
         ]
     },
-    color: 'white'
+    color:   'white'
 });
 
 const unofficialApiUrl = 'https://www.deezer.com/ajax/gw-light.php';
@@ -131,8 +131,8 @@ const ajaxActionUrl = 'https://www.deezer.com/ajax/action.php';
 
 let unofficialApiQueries = {
     api_version: '1.0',
-    api_token: '',
-    input: 3
+    api_token:   '',
+    input:       3
 };
 
 let httpHeaders;
@@ -147,7 +147,7 @@ function initRequest() {
         'accept-language': 'en-US,en;q=0.9,en-US;q=0.8,en;q=0.7',
         'accept-charset':  'utf-8,ISO-8859-1;q=0.8,*;q=0.7',
         'content-type':    'text/plain;charset=UTF-8',
-        'cookie': 'arl=' + configService.get('arl')
+        'cookie':          'arl=' + configService.get('arl')
     };
 
     let requestConfig = {
@@ -1562,7 +1562,7 @@ function downloadSingleTrack(id, trackInfos = {}, albumInfos = {}, isAlternative
 
                     const error = {
                         message: trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + ' \n  › Song already exists',
-                        name: 'songAlreadyExists'
+                        name:    'songAlreadyExists'
                     };
 
                     errorHandling(error);
@@ -2205,7 +2205,7 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
         if (!trackInfos.ALB_PICTURE) {
             reject();
         } else {
-        if (!fs.existsSync(albumCoverSavePath)) {
+            if (!fs.existsSync(albumCoverSavePath)) {
                 log.debug('Started downloading album cover for "track/' + trackInfos.SNG_ID + '". Album cover url: "' + albumCoverUrl + '"');
 
                 requestWithoutCache({
@@ -2247,12 +2247,12 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
                         reject();
                     }
                 });
-        } else {
-            log.debug('Album cover for "track/' + trackInfos.SNG_ID + '" already exists');
+            } else {
+                log.debug('Album cover for "track/' + trackInfos.SNG_ID + '" already exists');
 
-            resolve(albumCoverSavePath);
+                resolve(albumCoverSavePath);
+            }
         }
-	}
     });
 }
 
