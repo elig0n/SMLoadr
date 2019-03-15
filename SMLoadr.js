@@ -2510,7 +2510,6 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
                             .setFrame('TPOS', trackMetadata.partOfSetCombined)
                             .setFrame('TCOP', trackMetadata.copyright)
                             .setFrame('TPUB', trackMetadata.publisher.join('/'))
-                            .setFrame('TLEN', trackMetadata.duration)
                             .setFrame('TMED', trackMetadata.media)
                             .setFrame('TCOM', trackMetadata.composer)
                             .setFrame('TXXX', {
