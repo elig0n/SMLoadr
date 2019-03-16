@@ -2100,36 +2100,29 @@ function getBlowfishKey(trackInfos) {
  */
 function decryptTrack(trackBuffer, trackInfos) {
     const blowFishKey = getBlowfishKey(trackInfos);
-    let i = 0;
-    let position = 0;
 
     let decryptedBuffer = Buffer.alloc(trackBuffer.length);
-    decryptedBuffer.fill(0);
+    let chunkSize = 2048;
+    let progress = 0;
 
-    while (position < trackBuffer.length) {
-        let chunkSize = 2048;
-
-        if ((trackBuffer.length - position) < 2048) {
-            chunkSize = trackBuffer.length - position;
+    while (progress < trackBuffer.length) {
+        if ((trackBuffer.length - progress) < 2048) {
+            chunkSize = trackBuffer.length - progress;
         }
 
-        let encryptedChunk = Buffer.alloc(chunkSize);
-        encryptedChunk.fill(0);
-        trackBuffer.copy(encryptedChunk, 0, position, position + chunkSize);
+        let encryptedChunk = trackBuffer.slice(progress, progress + chunkSize);
 
-        if (i % 3 > 0 || chunkSize < 2048) {
-            // Already decrypted
-        } else {
+        // Only decrypt every third chunk and only if not at the end
+        if (progress % (chunkSize * 3) === 0 && chunkSize === 2048) {
             let cipher = crypto.createDecipheriv('bf-cbc', blowFishKey, Buffer.from([0, 1, 2, 3, 4, 5, 6, 7]));
-
             cipher.setAutoPadding(false);
-            encryptedChunk = cipher.update(encryptedChunk, 'binary', 'binary') + cipher.final();
+
+            encryptedChunk = Buffer.concat([cipher.update(encryptedChunk), cipher.final()]);
         }
 
-        decryptedBuffer.write(encryptedChunk.toString('binary'), position, 'binary');
+        decryptedBuffer.write(encryptedChunk.toString('binary'), progress, encryptedChunk.length, 'binary');
 
-        position += chunkSize;
-        i++;
+        progress += chunkSize;
     }
 
     return decryptedBuffer;
@@ -2179,10 +2172,10 @@ function downloadTrack(trackInfos, trackQualityId, saveFilePath, numberRetry = 0
                         });
                     }, 1000);
                 } else {
-                    reject();
+                    reject(err);
                 }
             } else {
-                reject();
+                reject(err);
             }
         });
     });
