@@ -2349,7 +2349,7 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
 
                         trackInfos.ARTISTS.forEach((trackArtist) => {
                             if (trackArtist.ART_NAME) {
-                                trackArtist = trackArtist.ART_NAME.split(new RegExp(' and | & | featuring | feat. | Ft. | ft. | vs | vs. | x | - |, ', 'g'));
+                                trackArtist = trackArtist.ART_NAME.split(new RegExp(' featuring | feat. | Ft. | ft. | vs | vs. | x | - |, ', 'g'));
                                 trackArtist = trackArtist.map(Function.prototype.call, String.prototype.trim);
 
                                 trackArtists = trackArtists.concat(trackArtist);
