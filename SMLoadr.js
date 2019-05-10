@@ -11,44 +11,12 @@
  * DASH:        XmHzFcygcwtqabgfEtJyq9cen1G5EnvuGR
  */
 
-const chalk = require('chalk');
-const ora = require('ora');
-const sanitize = require('sanitize-filename');
-const Promise = require('bluebird');
-const cacheManager = require('cache-manager');
-require('./node_modules/cache-manager/lib/stores/memory');
-const requestPlus = require('request-plus');
-const id3Writer = require('./libs/browser-id3-writer');
-const flacMetadata = require('./libs/flac-metadata');
-const inquirer = require('inquirer');
-const fs = require('fs');
-const stream = require('stream');
-const Finder = require('fs-finder');
-const nodePath = require('path');
-const memoryStats = require('./libs/node-memory-stats');
-const commandLineArgs = require('command-line-args');
-const commandLineUsage = require('command-line-usage');
-const nodeJsonFile = require('jsonfile');
-const openUrl = require('openurl');
-const packageJson = require('./package.json');
-
-const configFile = 'SMLoadrConfig.json';
-const ConfigService = require('./src/service/ConfigService');
-let configService = new ConfigService(configFile);
-
-const EncryptionService = require('./src/service/EncryptionService');
-let encryptionService = new EncryptionService();
-
-const Log = require('log');
-
 let DOWNLOAD_DIR = 'DOWNLOADS/';
 let PLAYLIST_DIR = 'PLAYLISTS/';
 let PLAYLIST_FILE_ITEMS = {};
 
 let DOWNLOAD_LINKS_FILE = 'downloadLinks.txt';
 let DOWNLOAD_MODE = 'single';
-
-const log = new Log('debug', fs.createWriteStream('SMLoadr.log'));
 
 const musicQualities = {
     MP3_128:  {
@@ -114,10 +82,48 @@ const cliOptionDefinitions = [
     }
 ];
 
+const chalk = require('chalk');
+const Ora = require('ora');
+const sanitize = require('sanitize-filename');
+const Promise = require('bluebird');
+const id3Writer = require('./libs/browser-id3-writer');
+const flacMetadata = require('./libs/flac-metadata');
+const inquirer = require('inquirer');
+const fs = require('fs');
+const stream = require('stream');
+const Finder = require('fs-finder');
+const nodePath = require('path');
+const memoryStats = require('./libs/node-memory-stats');
+const commandLineArgs = require('command-line-args');
+const commandLineUsage = require('command-line-usage');
+const nodeJsonFile = require('jsonfile');
+const openUrl = require('openurl');
+
+const configFile = 'SMLoadrConfig.json';
+const ConfigService = require('./src/service/ConfigService');
+let configService = new ConfigService(configFile);
+
+const EncryptionService = require('./src/service/EncryptionService');
+let encryptionService = new EncryptionService();
+
+const RequestFactory = require('./src/factory/RequestFactory');
+let requestFactory = new RequestFactory();
+
+const UnofficialAPIClient = require('./src/UnofficialAPIClient');
+let unofficialAPIClient = new UnofficialAPIClient(requestFactory);
+
+const packageJson = require('./package.json');
+const UpdateChecker = require('./src/service/UpdateChecker');
+let updateChecker = new UpdateChecker(requestFactory, packageJson.version);
+
+const Log = require('log');
+
+const log = new Log('debug', fs.createWriteStream('SMLoadr.log'));
+
 let cliOptions;
 const isCli = process.argv.length > 2;
 
-const downloadSpinner = new ora({
+const downloadSpinner = new Ora({
     spinner: {
         interval: 400,
         frames:   [
@@ -128,66 +134,6 @@ const downloadSpinner = new ora({
     color:   'white'
 });
 
-const unofficialApiUrl = 'https://www.deezer.com/ajax/gw-light.php';
-const ajaxActionUrl = 'https://www.deezer.com/ajax/action.php';
-
-let unofficialApiQueries = {
-    api_version: '1.0',
-    api_token:   '',
-    input:       3
-};
-
-let httpHeaders;
-let requestWithoutCache;
-let requestWithoutCacheAndRetry;
-let requestWithCache;
-
-function initRequest() {
-    httpHeaders = {
-        'user-agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36',
-        'cache-control':   'max-age=0',
-        'accept-language': 'en-US,en;q=0.9,en-US;q=0.8,en;q=0.7',
-        'accept-charset':  'utf-8,ISO-8859-1;q=0.8,*;q=0.7',
-        'content-type':    'text/plain;charset=UTF-8',
-        'cookie':          'arl=' + configService.get('arl')
-    };
-
-    let requestConfig = {
-        retry:    {
-            attempts:    9999999999,
-            delay:       1000, // 1 second
-            errorFilter: error => 403 !== error.statusCode // retry all errors
-        },
-        defaults: {
-            headers: httpHeaders,
-        }
-    };
-
-    requestWithoutCache = requestPlus(requestConfig);
-
-
-    let requestConfigWithoutCacheAndRetry = {
-        defaults: {
-            headers: httpHeaders
-        }
-    };
-
-    requestWithoutCacheAndRetry = requestPlus(requestConfigWithoutCacheAndRetry);
-
-    const cacheManagerCache = cacheManager.caching({
-        store: 'memory',
-        max:   1000
-    });
-
-    requestConfig.cache = {
-        cache:        cacheManagerCache,
-        cacheOptions: {
-            ttl: 3600 * 2 // 2 hours
-        }
-    };
-
-    requestWithCache = requestPlus(requestConfig);
-}
 
 /**
  * Application init.
@@ -248,27 +194,20 @@ function initRequest() {
  * Start the app.
  */
 function startApp() {
-    initRequest();
 
     downloadSpinner.text = 'Checking for update...';
     downloadSpinner.start();
 
-    isUpdateAvailable().then((response) => {
+    updateChecker.checkUpdate().then((response) => {
         if (response) {
             downloadSpinner.warn('New update available!\n  Please update to the latest version!');
 
             setTimeout(() => {
                 openUrl.open('https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases');
 
-                if (isCli) {
-                    setTimeout(() => {
-                        process.exit(1);
-                    }, 100);
-                } else {
-                    setTimeout(() => {
-                        // Nothing, only to keep the app running
-                    }, 999999999);
-                }
+                setTimeout(() => {
+                    process.exit(1);
+                }, 100);
             }, 1000);
         } else {
             downloadSpinner.succeed('You have the latest version :)');
@@ -285,7 +224,7 @@ function startApp() {
                     if ('Wrong Deezer credentials!' === err) {
                         downloadSpinner.fail('Wrong Deezer credentials!\n');
 
-                        configService.set('arl', null);
+                        // configService.set('arl', null);
 
                         configService.saveConfig();
 
@@ -304,41 +243,6 @@ function startApp() {
                 process.exit(1);
             }, 100);
         }
-    });
-}
-
-/**
- * Check if a new update of the app is available.
- *
- * @returns {Boolean}
- */
-function isUpdateAvailable() {
-    return new Promise((resolve, reject) => {
-        log.debug('Checking for update');
-
-        requestWithoutCacheAndRetry('https://pastebin.com/raw/1FE65caB').then((response) => {
-            log.debug('Checked for update on Pastebin. Response: "' + response + '"');
-
-            if (response !== packageJson.version) {
-                resolve(true);
-            } else {
-                resolve(false);
-            }
-        }).catch(() => {
-            log.debug('Failed checking on pastebin for update. Trying git repo.');
-
-            requestWithoutCache('https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/raw/branch/master/VERSION.md?' + Date.now()).then((response) => {
-                log.debug('Checked for update on the git repo. Response: "' + response + '"');
-
-                if (response !== packageJson.version) {
-                    resolve(true);
-                } else {
-                    resolve(false);
-                }
-            }).catch(() => {
-                reject('Could not check for update!');
-            });
-        });
     });
 }
 
@@ -366,37 +270,23 @@ function initDeezerApi() {
     return new Promise((resolve, reject) => {
         log.debug('Init Deezer API');
 
-        requestWithoutCacheAndRetry({
-            method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
-                method: 'deezer.getUserData',
-                cid:    getApiCid()
-            }),
-            json:   true,
-            jar:    true
-        }).then((response) => {
+        unofficialAPIClient.getUserData().then((response) => {
+            response = response.body; //TODO: Remove
+
             if (!response || 0 < Object.keys(response.error).length) {
                 throw 'Unable to initialize Deezer API.';
             } else {
                 if (response.results['USER']['USER_ID'] !== 0) {
-                    requestWithoutCacheAndRetry({
-                        method: 'POST',
-                        url:    unofficialApiUrl,
-                        qs:     Object.assign(unofficialApiQueries, {
-                            method: 'deezer.getUserData',
-                            cid:    getApiCid()
-                        }),
-                        json:   true,
-                        jar:    true
-                    }).then((response) => {
+                    unofficialAPIClient.getUserData().then((response) => {
+                        response = response.body; //TODO: Remove
+
                         if (!response || 0 < Object.keys(response.error).length) {
                             throw 'Unable to initialize Deezer API.';
                         } else {
                             if (response.results && response.results.checkForm) {
                                 log.debug('Successfully initiated Deezer API. Checkform: "' + response.results.checkForm + '"');
 
-                                unofficialApiQueries.api_token = response.results.checkForm;
+                                unofficialAPIClient.setParameter('api_token', response.results.checkForm);
 
                                 resolve();
                             } else {
@@ -424,6 +314,7 @@ function initDeezerApi() {
 function initDeezerCredentials() {
     return new Promise((resolve) => {
         let arl = configService.get('arl');
+        unofficialAPIClient.setCookie('arl', arl);
 
         if (arl) {
             resolve();
@@ -441,9 +332,9 @@ function initDeezerCredentials() {
 
             inquirer.prompt(questions).then(answers => {
                 configService.set('arl', answers.arl);
+                unofficialAPIClient.setCookie('arl', arl);
 
                 configService.saveConfig();
-                initRequest();
 
                 resolve();
             });
@@ -451,14 +342,6 @@ function initDeezerCredentials() {
     });
 }
 
-/**
- * Get a cid for a unofficial api request.
- *
- * @return {Number}
- */
-function getApiCid() {
-    return Math.floor(1e9 * Math.random());
-}
 
 /**
  * Show user selection for the music download quality.
@@ -934,26 +817,9 @@ function getDeezerUrlParts(deezerUrl) {
  */
 function downloadArtist(id) {
     return new Promise((resolve, reject) => {
-        let requestParams = {
-            method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
-                method: 'artist.getData',
-                cid:    getApiCid()
-            }),
-            body:   {
-                art_id:         id,
-                filter_role_id: [0],
-                lang:           'us',
-                tab:            0,
-                nb:             -1,
-                start:          0
-            },
-            json:   true,
-            jar:    true
-        };
+        unofficialAPIClient.getArtistTracks(id).then((response) => {
+            response = response.body; //TODO: Remove
 
-        requestWithCache(requestParams).then((response) => {
             if (!response || 0 < Object.keys(response.error).length) {
                 if (response.error.VALID_TOKEN_REQUIRED) {
                     initDeezerApi();
@@ -974,18 +840,9 @@ function downloadArtist(id) {
                 const artistName = response.results.ART_NAME;
                 downloadStateInstance.setDownloadTypeName(artistName);
 
-                requestParams.qs.method = 'album.getDiscography';
-                requestParams.qs.cid = getApiCid();
-                requestParams.body = {
-                    art_id:         id,
-                    filter_role_id: [0],
-                    lang:           'us',
-                    nb:             500,
-                    nb_songs:       -1,
-                    start:          0
-                };
+               unofficialAPIClient.getDiscography(id).then((response) => {
+                   response = response.body; //TODO: Remove
 
-                requestWithoutCache(requestParams).then((response) => {
                     if (!response || 0 < Object.keys(response.error).length) {
                         if (response.error.VALID_TOKEN_REQUIRED) {
                             initDeezerApi();
@@ -1043,59 +900,28 @@ function downloadArtist(id) {
  * @param {Number} id
  */
 function downloadMultiple(type, id) {
-    let requestBody;
-    let requestQueries = unofficialApiQueries;
+    let request = null;
 
     switch (type) {
         case 'album':
-            requestQueries.method = 'deezer.pageAlbum';
-            requestBody = {
-                alb_id: id,
-                lang:   'en',
-                tab:    0
-            };
+            request = unofficialAPIClient.getAlbumTracks(id);
             break;
 
         case 'playlist':
-            requestQueries.method = 'deezer.pagePlaylist';
-            requestBody = {
-                playlist_id: id,
-                lang:        'en',
-                nb:          -1,
-                start:       0,
-                tab:         0,
-                tags:        true,
-                header:      true
-            };
+            request = unofficialAPIClient.getPlaylistTracks(id);
             break;
 
         case 'profile':
-            requestQueries.method = 'deezer.pageProfile';
-            requestBody = {
-                user_id: id,
-                tab:     'loved',
-                nb:      -1
-            };
+            request = unofficialAPIClient.getProfileTracks(id);
             break;
-    }
-
-    let requestParams = {
-        method: 'POST',
-        url:    unofficialApiUrl,
-        qs:     requestQueries,
-        body:   requestBody,
-        json:   true,
-        jar:    true
-    };
-
-    let request = requestWithoutCache;
-
-    if (!['playlist', 'profile'].includes(type)) {
-        request = requestWithCache;
+        default:
+            throw 'Unsupported Type';
     }
 
     return new Promise((resolve, reject) => {
-        request(requestParams).then((response) => {
+        request.then((response) => {
+            response = response.body; //TODO: Remove
+
             if (!response || 0 < Object.keys(response.error).length || ('playlist' === type && 1 === Number(response.results.DATA.STATUS) && 0 < response.results.DATA.DURATION && 0 === response.results.SONGS.data.length)) {
                 if (response.error.VALID_TOKEN_REQUIRED) {
                     initDeezerApi();
@@ -1639,19 +1465,9 @@ function downloadSingleTrack(id, trackInfos = {}, albumInfos = {}, isAlternative
  */
 function getTrackInfos(id) {
     return new Promise((resolve, reject) => {
-        return requestWithCache({
-            method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
-                method: 'deezer.pageTrack',
-                cid:    getApiCid()
-            }),
-            body:   {
-                sng_id: id
-            },
-            json:   true,
-            jar:    true
-        }).then((response) => {
+        return unofficialAPIClient.getTrackInfo(id).then((response) => {
+            response = response.body; //TODO: Remove
+
             log.debug('Got track infos for "track/' + id + '"');
 
             if (response && 0 === Object.keys(response.error).length && response.results && response.results.DATA) {
@@ -1688,22 +1504,9 @@ function getTrackInfos(id) {
  */
 function getTrackAlternative(trackInfos) {
     return new Promise((resolve, reject) => {
-        return requestWithCache({
-            method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
-                method: 'search.music',
-                cid:    getApiCid()
-            }),
-            body:   {
-                QUERY:  'artist:\'' + trackInfos.ART_NAME + '\' track:\'' + trackInfos.SNG_TITLE + '\'',
-                OUTPUT: 'TRACK',
-                NB:     50,
-                FILTER: 0
-            },
-            json:   true,
-            jar:    true
-        }).then((response) => {
+        return unofficialAPIClient.searchAlternative(trackInfos).then((response) => {
+            response = response.body; //TODO: Remove
+
             log.debug('Got alternative track for "track/' + trackInfos.SNG_ID + '"');
             if (response && 0 === Object.keys(response.error).length && response.results && response.results.data && 0 < response.results.data.length) {
                 const foundTracks = response.results.data;
@@ -1784,21 +1587,9 @@ function removeWhitespacesAndSpecialChars(string) {
  */
 function getAlbumInfos(id) {
     return new Promise((resolve, reject) => {
-        return requestWithCache({
-            method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
-                method: 'deezer.pageAlbum',
-                cid:    getApiCid()
-            }),
-            body:   {
-                alb_id: id,
-                lang:   'us',
-                tab:    0
-            },
-            json:   true,
-            jar:    true
-        }).then((response) => {
+        return unofficialAPIClient.getAlbumTracks(id).then((response) => {
+            response = response.body; //TODO: Remove
+
             log.debug('Got album infos for "album/' + id + '"');
 
             if (response && 0 === Object.keys(response.error).length && response.results && response.results.DATA && response.results.SONGS) {
@@ -1832,8 +1623,7 @@ function getAlbumInfos(id) {
  */
 function getAlbumInfosOfficialApi(id) {
     return new Promise((resolve, reject) => {
-        return requestWithCache({
-            url:  'https://api.deezer.com/album/' + id,
+        return requestFactory.do('https://api.deezer.com/album/' + id, {
             json: true
         }).then((albumInfos) => {
             log.debug('Got album infos (official api) for "album/' + id + '"');
@@ -1856,19 +1646,9 @@ function getAlbumInfosOfficialApi(id) {
  */
 function getTrackLyrics(id) {
     return new Promise((resolve, reject) => {
-        return requestWithCache({
-            method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
-                method: 'song.getLyrics',
-                cid:    getApiCid()
-            }),
-            body:   {
-                sng_id: id
-            },
-            json:   true,
-            jar:    true
-        }).then((response) => {
+        return unofficialAPIClient.getLyrics(id).then((response) => {
+            response = response.body; //TODO: Remove
+
             log.debug('Got lyrics for "track/' + id + '"');
 
             if (response && 0 === Object.keys(response.error).length && response.results && response.results.LYRICS_ID) {
@@ -2082,12 +1862,10 @@ function downloadTrack(trackInfos, trackQualityId, saveFilePath, numberRetry = 0
 
         log.debug('Started downloading "track/' + trackInfos.SNG_ID + '" in "' + trackQualityId + '". Download url: "' + trackDownloadUrl + '"');
 
-        requestWithoutCache({
-            url:      trackDownloadUrl,
-            headers:  httpHeaders,
-            jar:      true,
+        requestFactory.do(trackDownloadUrl, {
             encoding: null
         }).then((response) => {
+            response = response.body; //TODO: Remove
             log.debug('Got download response for "track/' + trackInfos.SNG_ID + '"');
 
             const decryptedTrackBuffer = encryptionService.decryptTrack(response, trackInfos);
@@ -2141,10 +1919,7 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
             if (!fs.existsSync(albumCoverSavePath)) {
                 log.debug('Started downloading album cover for "track/' + trackInfos.SNG_ID + '". Album cover url: "' + albumCoverUrl + '"');
 
-                requestWithoutCache({
-                    url:      albumCoverUrl,
-                    headers:  httpHeaders,
-                    jar:      true,
+                requestFactory.do(albumCoverUrl, {
                     encoding: null
                 }).then((response) => {
                     log.debug('Got album cover download response for "track/' + trackInfos.SNG_ID + '"');
