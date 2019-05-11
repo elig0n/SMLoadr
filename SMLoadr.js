@@ -1,3 +1,4 @@
+'use strict';
 /**
  * Made with love & beer by SMLoadrDevs.
  * https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr
@@ -96,7 +97,6 @@ const nodePath = require('path');
 const memoryStats = require('./libs/node-memory-stats');
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
-const nodeJsonFile = require('jsonfile');
 const openUrl = require('openurl');
 
 const configFile = 'SMLoadrConfig.json';
@@ -115,6 +115,21 @@ let unofficialAPIClient = new UnofficialAPIClient(requestFactory);
 const packageJson = require('./package.json');
 const UpdateChecker = require('./src/service/UpdateChecker');
 let updateChecker = new UpdateChecker(requestFactory, packageJson.version);
+
+
+const AlbumType = require('./src/DownloadTypes/AlbumType');
+const TrackType = require('./src/DownloadTypes/TrackType');
+const ArtistType = require('./src/DownloadTypes/ArtistType');
+const ProfileType = require('./src/DownloadTypes/ProfileType');
+const PlaylistType = require('./src/DownloadTypes/PlaylistType');
+const DownloadTypeRegistry = require('./src/DownloadTypeRegistry');
+let downloadTypeRegistry = new DownloadTypeRegistry(unofficialAPIClient);
+
+downloadTypeRegistry.register(AlbumType);
+downloadTypeRegistry.register(TrackType);
+downloadTypeRegistry.register(ArtistType);
+downloadTypeRegistry.register(ProfileType);
+downloadTypeRegistry.register(PlaylistType);
 
 const Log = require('log');
 
@@ -138,17 +153,17 @@ const downloadSpinner = new Ora({
  * Application init.
  */
 (function initApp() {
-    process.on('unhandledRejection', (reason, p) => {
-        log.debug(reason + 'Unhandled Rejection at Promise' + p);
-        console.error('\n' + reason + '\nUnhandled Rejection at Promise' + JSON.stringify(p) + '\n');
-    });
-
-    process.on('uncaughtException', (err) => {
-        log.debug(err + 'Uncaught Exception thrown');
-        console.error('\n' + err + '\nUncaught Exception thrown' + '\n');
-
-        process.exit(1);
-    });
+    // process.on('unhandledRejection', (reason, p) => {
+    //     log.debug(reason + 'Unhandled Rejection at Promise' + p);
+    //     console.error('\n' + reason + '\nUnhandled Rejection at Promise' + JSON.stringify(p) + '\n');
+    // });
+    //
+    // process.on('uncaughtException', (err) => {
+    //     log.debug(err + 'Uncaught Exception thrown');
+    //     console.error('\n' + err + '\nUncaught Exception thrown' + '\n');
+    //
+    //     process.exit(1);
+    // });
 
     // App info
     console.log(chalk.cyan('╔══════════════════════════════════════════════════════════════════╗'));
@@ -537,19 +552,8 @@ function askForNewDownload() {
             prefix:   '♫',
             message:  'Deezer URL:',
             validate: (deezerUrl) => {
-                if (deezerUrl) {
-                    let deezerUrlType = getDeezerUrlParts(deezerUrl).type;
-                    let allowedDeezerUrlTypes = [
-                        'album',
-                        'artist',
-                        'playlist',
-                        'profile',
-                        'track'
-                    ];
-
-                    if (allowedDeezerUrlTypes.includes(deezerUrlType)) {
-                        return true;
-                    }
+                if (downloadTypeRegistry.isSupported(deezerUrl) === true) {
+                    return true;
                 }
 
                 return 'Deezer URL example: https://www.deezer.com/album|artist|playlist|profile|track/0123456789';
@@ -769,250 +773,78 @@ function startDownload(deezerUrl, downloadFromFile = false) {
     log.debug('------------------------------------------');
     log.debug('Started download task: "' + deezerUrl + '"');
 
-    const deezerUrlParts = getDeezerUrlParts(deezerUrl);
-
-    downloadStateInstance.start(deezerUrlParts.type, deezerUrlParts.id);
-
-    switch (deezerUrlParts.type) {
-        case 'album':
-        case 'playlist':
-        case 'profile':
-            return downloadMultiple(deezerUrlParts.type, deezerUrlParts.id).then(() => {
-                downloadStateInstance.finish(!downloadFromFile);
-            });
-        case 'artist':
-            return downloadArtist(deezerUrlParts.id).then(() => {
-                downloadStateInstance.finish(!downloadFromFile);
-            });
-        case 'track':
-            downloadStateInstance.updateNumberTracksToDownload(1);
-
-            return downloadSingleTrack(deezerUrlParts.id).then(() => {
-                downloadStateInstance.finish(!downloadFromFile);
-            });
-    }
-}
-
-/**
- * Get the url type (album/artist/playlist/profile/track) and the id from the deezer url.
- *
- * @param {String} deezerUrl
- *
- * @return {Object}
- */
-function getDeezerUrlParts(deezerUrl) {
-    const urlParts = deezerUrl.split(/\/(\w+)\/(\d+)/);
-
-    return {
-        type: urlParts[1],
-        id:   urlParts[2]
-    };
-}
-
-/**
- * Download all tracks of an artists.
- *
- * @param {Number} id
- */
-function downloadArtist(id) {
     return new Promise((resolve, reject) => {
-        unofficialAPIClient.getArtistTracks(id).then((response) => {
-            response = response.body; //TODO: Remove
+        downloadTypeRegistry.getDownloader(deezerUrl).then(downloadType => {
+            downloadStateInstance.start(downloadType.constructor.getProviderName(), downloadType.getID());
 
-            if (!response || 0 < Object.keys(response.error).length) {
-                if (response.error.VALID_TOKEN_REQUIRED) {
-                    initDeezerApi();
-
-                    setTimeout(() => {
-                        downloadArtist(id).then(() => {
-                            resolve();
-                        }).catch((err) => {
-                            reject(err);
-                        });
-                    }, 1000);
-                } else {
-                    throw 'Could not fetch the artist!';
-                }
-            } else {
-                log.debug('Got artist infos for "artist/' + id + '"');
-
-                const artistName = response.results.ART_NAME;
-                downloadStateInstance.setDownloadTypeName(artistName);
-
-               unofficialAPIClient.getDiscography(id).then((response) => {
-                   response = response.body; //TODO: Remove
-
-                    if (!response || 0 < Object.keys(response.error).length) {
-                        if (response.error.VALID_TOKEN_REQUIRED) {
-                            initDeezerApi();
-
-                            setTimeout(() => {
-                                downloadArtist(id).then(() => {
-                                    resolve();
-                                }).catch((err) => {
-                                    reject(err);
-                                });
-                            }, 1000);
-                        } else {
-                            throw 'Could not fetch "' + artistName + '" albums!';
-                        }
-                    } else {
-                        log.debug('Got all albums for "artist/' + id + '"');
-
-                        if (0 < response.results.data.length) {
-                            let trackList = [];
-                            let albumList = {};
-
-                            response.results.data.forEach((album) => {
-                                albumList[album.ALB_ID] = album;
-
-                                album.SONGS.data.forEach((track) => {
-                                    trackList.push(track);
-                                });
-                            });
-
-                            downloadStateInstance.updateNumberTracksToDownload(trackList.length);
-
-                            trackListDownload(trackList, albumList).then(() => {
-                                resolve();
-                            });
-                        } else {
-                            downloadSpinner.warn('No tracks to download for artist "' + artistName + '"');
-
-                            resolve();
-                        }
-                    }
-                }).catch((err) => {
-                    reject(err);
-                });
-            }
-        }).catch((err) => {
-            reject(err);
+            downloadMultiple(downloadType).then(() => {
+                downloadStateInstance.finish(!downloadFromFile);
+            }).then(value => {
+                resolve(value)
+            }).catch(reason => {
+                reject(reason);
+            });
         });
     });
 }
 
 /**
- * Download multiple tracks (album, playlist or users favourite tracks)
+ * Download multiple tracks with the given DownloadType
  *
- * @param {String} type
- * @param {Number} id
+ * @param {DownloadType} downloadType
  */
-function downloadMultiple(type, id) {
-    let request = null;
-
-    switch (type) {
-        case 'album':
-            request = unofficialAPIClient.getAlbumTracks(id);
-            break;
-
-        case 'playlist':
-            request = unofficialAPIClient.getPlaylistTracks(id);
-            break;
-
-        case 'profile':
-            request = unofficialAPIClient.getProfileTracks(id);
-            break;
-        default:
-            throw 'Unsupported Type';
-    }
-
+function downloadMultiple(downloadType) {
     return new Promise((resolve, reject) => {
-        request.then((response) => {
-            response = response.body; //TODO: Remove
+        let downloadTypeName = downloadType.constructor.getProviderName();
+        let albumList = {};
+        let trackList = downloadType.getTrackInfos();
 
-            if (!response || 0 < Object.keys(response.error).length || ('playlist' === type && 1 === Number(response.results.DATA.STATUS) && 0 < response.results.DATA.DURATION && 0 === response.results.SONGS.data.length)) {
-                if (response.error.VALID_TOKEN_REQUIRED) {
-                    initDeezerApi();
+        log.debug('Got track list for "' + downloadTypeName + '/' + downloadType.getName() + '"');
 
-                    setTimeout(() => {
-                        downloadMultiple(type, id).then(() => {
-                            resolve();
-                        }).catch((err) => {
-                            reject(err);
-                        });
-                    }, 1000);
-                } else if ('playlist' === type && response.results && response.results.DATA && 1 === Number(response.results.DATA.STATUS && 0 < response.results.DATA.DURATION && 0 === response.results.SONGS.data.length)) {
-                    throw 'Other users private playlists are not supported!';
-                } else {
-                    throw 'Could not fetch the ' + type + '!';
-                }
-            } else {
-                log.debug('Got track list for "' + type + '/' + id + '"');
+        downloadStateInstance.setDownloadTypeName(downloadType.getName());
 
-                let trackList = [];
-                let albumList = {};
-                let downloadTypeName = '';
+        if (0 < trackList.length) {
 
-                switch (type) {
-                    case 'album':
-                        trackList = response.results.SONGS.data;
+            PLAYLIST_FILE_ITEMS = null;
+            // We don't want to generate a playlist file if this is no playlist
+            if (downloadType.constructor.shouldGeneratePlaylist()) {
+                PLAYLIST_FILE_ITEMS = {};
+            }
 
-                        response.results.DATA.SONGS = response.results.SONGS;
-                        albumList[response.results.DATA.ALB_ID] = response.results.DATA;
+            downloadStateInstance.updateNumberTracksToDownload(trackList.length);
 
-                        downloadTypeName = response.results.DATA.ALB_TITLE;
+            trackListDownload(trackList, albumList).then(() => {
+                // Generate the playlist file
+                if (PLAYLIST_FILE_ITEMS != null) {
+                    const playlistName = multipleWhitespacesToSingle(sanitizeFilename(response.results.DATA.TITLE));
+                    const playlistFile = nodePath.join(PLAYLIST_DIR, playlistName + '.m3u8');
+                    let playlistFileContent = '';
 
-                        break;
-                    case 'playlist':
-                        trackList = response.results.SONGS.data;
-                        downloadTypeName = response.results.DATA.TITLE;
-
-                        break;
-                    case 'profile':
-                        trackList = response.results.TAB.loved.data;
-                        downloadTypeName = response.results.DATA.USER.DISPLAY_NAME;
-
-                        break;
-                }
-
-                downloadStateInstance.setDownloadTypeName(downloadTypeName);
-
-                if (0 < trackList.length) {
-                    // We don't want to generate a playlist file if this is no playlist
-                    if (['profile', 'album'].includes(type)) {
-                        PLAYLIST_FILE_ITEMS = null;
-                    } else {
-                        PLAYLIST_FILE_ITEMS = {};
+                    for (let i = 0; i < PLAYLIST_FILE_ITEMS.length; i++) {
+                        playlistFileContent += PLAYLIST_FILE_ITEMS[i] + '\r\n';
                     }
 
-                    downloadStateInstance.updateNumberTracksToDownload(trackList.length);
+                    trackList.forEach((trackInfos) => {
+                        if (PLAYLIST_FILE_ITEMS[trackInfos.SNG_ID]) {
+                            const playlistFileItem = PLAYLIST_FILE_ITEMS[trackInfos.SNG_ID];
 
-                    trackListDownload(trackList, albumList).then(() => {
-                        // Generate the playlist file
-                        if (PLAYLIST_FILE_ITEMS != null) {
-                            const playlistName = multipleWhitespacesToSingle(sanitizeFilename(response.results.DATA.TITLE));
-                            const playlistFile = nodePath.join(PLAYLIST_DIR, playlistName + '.m3u8');
-                            let playlistFileContent = '';
-
-                            for (let i = 0; i < PLAYLIST_FILE_ITEMS.length; i++) {
-                                playlistFileContent += PLAYLIST_FILE_ITEMS[i] + '\r\n';
-                            }
-
-                            trackList.forEach((trackInfos) => {
-                                if (PLAYLIST_FILE_ITEMS[trackInfos.SNG_ID]) {
-                                    const playlistFileItem = PLAYLIST_FILE_ITEMS[trackInfos.SNG_ID];
-
-                                    playlistFileContent += '#EXTINF:' + playlistFileItem.trackDuration + ',' + playlistFileItem.trackArtist + ' - ' + playlistFileItem.trackTitle + '\r\n';
-                                    playlistFileContent += '../' + playlistFileItem.trackSavePath + '\r\n';
-                                }
-                            });
-
-                            ensureDir(playlistFile);
-                            fs.writeFileSync(playlistFile, playlistFileContent);
+                            playlistFileContent += '#EXTINF:' + playlistFileItem.trackDuration + ',' + playlistFileItem.trackArtist + ' - ' + playlistFileItem.trackTitle + '\r\n';
+                            playlistFileContent += '../' + playlistFileItem.trackSavePath + '\r\n';
                         }
-
-                        resolve();
                     });
-                } else {
-                    downloadSpinner.warn('No tracks to download for ' + type + ' "' + downloadTypeName + '"');
 
-                    resolve();
+                    ensureDir(playlistFile);
+                    fs.writeFileSync(playlistFile, playlistFileContent);
                 }
-            }
-        }).catch((err) => {
-            reject(err);
-        });
+
+                resolve();
+            });
+        } else {
+            downloadSpinner.warn('No tracks to download for "' + downloadTypeName + '/' + downloadType.getName() + '"');
+
+            resolve();
+        }
+
     });
 }
 

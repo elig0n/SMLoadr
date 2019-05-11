@@ -10,10 +10,10 @@ const defaultAPIParameters = {
 
 const unofficialApiUrl = 'https://www.deezer.com/ajax/gw-light.php';
 
-module.exports = class RequestFactory {
+module.exports = class UnofficialAPIClient {
 
     /**
-     * @param {RequestFactory} requestFactory
+     * @param {UnofficialAPIClient} requestFactory
      */
     constructor(requestFactory) {
         this.baseParameters = defaultAPIParameters;
@@ -49,7 +49,7 @@ module.exports = class RequestFactory {
     getTrackInfo(songID) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'deezer.pageTrack',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             sng_id: songID
         }, true, true, true);
@@ -58,7 +58,7 @@ module.exports = class RequestFactory {
     getTrackInfos(...songIDs) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'song.getListAllData',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             SNG_IDS: songIDs.map(value => [value, 0])
         }, true, true, true);
@@ -67,14 +67,14 @@ module.exports = class RequestFactory {
     getUserData() {
         return this.requestFactory.get(unofficialApiUrl, this.getQueryParameters({
             method: 'deezer.getUserData',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), true, false, true);
     }
 
     getPlaylistTracks(playlistID) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'deezer.pagePlaylist',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             playlist_id: playlistID,
             lang:        'en',
@@ -86,10 +86,10 @@ module.exports = class RequestFactory {
         }, true, true, true);
     }
 
-    getArtistTracks(artistID) {
+    getArtistInfo(artistID) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'artist.getData',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             art_id:         artistID,
             filter_role_id: [0],
@@ -103,7 +103,7 @@ module.exports = class RequestFactory {
     getDiscography(artistID) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'album.getDiscography',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             art_id:         artistID,
             filter_role_id: [0],
@@ -114,10 +114,10 @@ module.exports = class RequestFactory {
         }, true, true, true);
     }
 
-    getProfileTracks(profileID) {
+    getProfile(profileID) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'deezer.pageProfile',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             user_id: profileID,
             tab:     'loved',
@@ -128,7 +128,7 @@ module.exports = class RequestFactory {
     getAlbumTracks(albumID) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'deezer.pageAlbum',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             alb_id: albumID,
             lang:   'us',
@@ -139,7 +139,7 @@ module.exports = class RequestFactory {
     getAlbumTrackInfo(albumID) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'song.getListByAlbum',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             alb_id: albumID,
             start:  '0',
@@ -150,7 +150,7 @@ module.exports = class RequestFactory {
     searchAlternative(trackInfos) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'search.music',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             QUERY:  'artist:\'' + trackInfos.ART_NAME + '\' track:\'' + trackInfos.SNG_TITLE + '\'',
             OUTPUT: 'TRACK',
@@ -162,7 +162,7 @@ module.exports = class RequestFactory {
     getLyrics(songID) {
         return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
             method: 'song.getLyrics',
-            cid:    RequestFactory.getApiCid()
+            cid:    this.constructor.getApiCid()
         }), {
             sng_id: songID
         }, true, true, true);
