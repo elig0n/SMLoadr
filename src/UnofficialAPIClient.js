@@ -55,6 +55,15 @@ module.exports = class RequestFactory {
         }, true, true, true);
     }
 
+    getTrackInfos(...songIDs) {
+        return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
+            method: 'song.getListAllData',
+            cid:    RequestFactory.getApiCid()
+        }), {
+            SNG_IDS: songIDs.map(value => [value, 0])
+        }, true, true, true);
+    }
+
     getUserData() {
         return this.requestFactory.get(unofficialApiUrl, this.getQueryParameters({
             method: 'deezer.getUserData',
@@ -124,6 +133,17 @@ module.exports = class RequestFactory {
             alb_id: albumID,
             lang:   'us',
             tab:    0
+        }, true, true, true);
+    }
+
+    getAlbumTrackInfo(albumID) {
+        return this.requestFactory.post(unofficialApiUrl, this.getQueryParameters({
+            method: 'song.getListByAlbum',
+            cid:    RequestFactory.getApiCid()
+        }), {
+            alb_id: albumID,
+            start:  '0',
+            nb:     '500'
         }, true, true, true);
     }
 

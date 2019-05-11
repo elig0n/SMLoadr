@@ -134,7 +134,6 @@ const downloadSpinner = new Ora({
     color:   'white'
 });
 
-
 /**
  * Application init.
  */
@@ -224,7 +223,7 @@ function startApp() {
                     if ('Wrong Deezer credentials!' === err) {
                         downloadSpinner.fail('Wrong Deezer credentials!\n');
 
-                        // configService.set('arl', null);
+                        configService.set('arl', null);
 
                         configService.saveConfig();
 
@@ -1922,6 +1921,7 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
                 requestFactory.do(albumCoverUrl, {
                     encoding: null
                 }).then((response) => {
+                    response = response.body; //TODO: Remove
                     log.debug('Got album cover download response for "track/' + trackInfos.SNG_ID + '"');
 
                     ensureDir(albumCoverSavePath);
