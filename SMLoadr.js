@@ -11,6 +11,7 @@
  * DASH:        XmHzFcygcwtqabgfEtJyq9cen1G5EnvuGR
  */
 
+const Promise = require('bluebird');
 const chalk = require('chalk');
 const ora = require('ora');
 const sanitize = require('sanitize-filename');
