@@ -1,5 +1,4 @@
 module.exports = class NamingService {
-    configService;
 
     /**
      * @param {ConfigService} configService
