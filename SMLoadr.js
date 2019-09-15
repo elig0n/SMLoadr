@@ -28,7 +28,6 @@ const nodePath = require('path');
 const memoryStats = require('./libs/node-memory-stats');
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
-const nodeJsonFile = require('jsonfile');
 const openUrl = require('openurl');
 const packageJson = require('./package.json');
 
@@ -39,9 +38,11 @@ let configService = new ConfigService(configFile);
 const EncryptionService = require('./src/service/EncryptionService');
 let encryptionService = new EncryptionService();
 
+const NamingService = require('./src/service/NamingService');
+let namingService = new NamingService(configService);
+
 const Log = require('log');
 
-let DOWNLOAD_DIR = 'DOWNLOADS/';
 let PLAYLIST_DIR = 'PLAYLISTS/';
 let PLAYLIST_FILE_ITEMS = {};
 
@@ -51,27 +52,27 @@ let DOWNLOAD_MODE = 'single';
 const log = new Log('debug', fs.createWriteStream('SMLoadr.log'));
 
 const musicQualities = {
-    MP3_128:  {
-        id:             1,
-        name:           'MP3 - 128 kbps',
+    MP3_128: {
+        id: 1,
+        name: 'MP3 - 128 kbps',
         aproxMaxSizeMb: '100'
     },
-    MP3_256:  {
-        id:   5,
+    MP3_256: {
+        id: 5,
         name: 'MP3 - 256 kbps'
     },
-    MP3_320:  {
-        id:             3,
-        name:           'MP3 - 320 kbps',
+    MP3_320: {
+        id: 3,
+        name: 'MP3 - 320 kbps',
         aproxMaxSizeMb: '200'
     },
-    FLAC:     {
-        id:             9,
-        name:           'FLAC - 1411 kbps',
+    FLAC: {
+        id: 9,
+        name: 'FLAC - 1411 kbps',
         aproxMaxSizeMb: '700'
     },
     MP3_MISC: {
-        id:   0,
+        id: 0,
         name: 'User uploaded song'
     }
 };
@@ -80,37 +81,30 @@ let selectedMusicQuality = musicQualities.MP3_320;
 
 const cliOptionDefinitions = [
     {
-        name:        'help',
-        alias:       'h',
+        name: 'help',
+        alias: 'h',
         description: 'Print this usage guide :)'
     },
     {
-        name:         'quality',
-        alias:        'q',
-        type:         String,
+        name: 'quality',
+        alias: 'q',
+        type: String,
         defaultValue: 'MP3_320',
-        description:  'The quality of the files to download: MP3_128/MP3_320/FLAC'
+        description: 'The quality of the files to download: MP3_128/MP3_320/FLAC'
     },
     {
-        name:         'path',
-        alias:        'p',
-        type:         String,
-        defaultValue: DOWNLOAD_DIR,
-        description:  'The path to download the files to: path with / in the end'
-    },
-    {
-        name:          'url',
-        alias:         'u',
-        type:          String,
+        name: 'url',
+        alias: 'u',
+        type: String,
         defaultOption: true,
-        description:   'Downloads single deezer url: album/artist/playlist/profile/track url'
+        description: 'Downloads single deezer url: album/artist/playlist/profile/track url'
     },
     {
-        name:         'downloadmode',
-        alias:        'd',
-        type:         String,
+        name: 'downloadmode',
+        alias: 'd',
+        type: String,
         defaultValue: 'single',
-        description:  'Downloads multiple urls from list: "all" for downloadLinks.txt'
+        description: 'Downloads multiple urls from list: "all" for downloadLinks.txt'
     }
 ];
 
@@ -120,12 +114,12 @@ const isCli = process.argv.length > 2;
 const downloadSpinner = new ora({
     spinner: {
         interval: 400,
-        frames:   [
+        frames: [
             '♫',
             ' '
         ]
     },
-    color:   'white'
+    color: 'white'
 });
 
 const unofficialApiUrl = 'https://www.deezer.com/ajax/gw-light.php';
@@ -133,8 +127,8 @@ const ajaxActionUrl = 'https://www.deezer.com/ajax/action.php';
 
 let unofficialApiQueries = {
     api_version: '1.0',
-    api_token:   '',
-    input:       3
+    api_token: '',
+    input: 3
 };
 
 let httpHeaders;
@@ -144,18 +138,18 @@ let requestWithCache;
 
 function initRequest() {
     httpHeaders = {
-        'user-agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36',
-        'cache-control':   'max-age=0',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36',
+        'cache-control': 'max-age=0',
         'accept-language': 'en-US,en;q=0.9,en-US;q=0.8,en;q=0.7',
-        'accept-charset':  'utf-8,ISO-8859-1;q=0.8,*;q=0.7',
-        'content-type':    'text/plain;charset=UTF-8',
-        'cookie':          'arl=' + configService.get('arl')
+        'accept-charset': 'utf-8,ISO-8859-1;q=0.8,*;q=0.7',
+        'content-type': 'text/plain;charset=UTF-8',
+        'cookie': 'arl=' + configService.get('arl')
     };
 
     let requestConfig = {
-        retry:    {
-            attempts:    9999999999,
-            delay:       1000, // 1 second
+        retry: {
+            attempts: 9999999999,
+            delay: 1000, // 1 second
             errorFilter: error => 403 !== error.statusCode // retry all errors
         },
         defaults: {
@@ -176,11 +170,11 @@ function initRequest() {
 
     const cacheManagerCache = cacheManager.caching({
         store: 'memory',
-        max:   1000
+        max: 1000
     });
 
     requestConfig.cache = {
-        cache:        cacheManagerCache,
+        cache: cacheManagerCache,
         cacheOptions: {
             ttl: 3600 * 2 // 2 hours
         }
@@ -229,7 +223,6 @@ function initRequest() {
         fs.writeFileSync(DOWNLOAD_LINKS_FILE, '');
     }
 
-    nodePath.normalize(DOWNLOAD_DIR).replace(/\/$|\\$/, '');
     nodePath.normalize(PLAYLIST_DIR).replace(/\/$|\\$/, '');
 
     if (isCli) {
@@ -368,13 +361,13 @@ function initDeezerApi() {
 
         requestWithoutCacheAndRetry({
             method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
+            url: unofficialApiUrl,
+            qs: Object.assign(unofficialApiQueries, {
                 method: 'deezer.getUserData',
-                cid:    getApiCid()
+                cid: getApiCid()
             }),
-            json:   true,
-            jar:    true
+            json: true,
+            jar: true
         }).then((response) => {
             if (!response || 0 < Object.keys(response.error).length) {
                 throw 'Unable to initialize Deezer API.';
@@ -382,13 +375,13 @@ function initDeezerApi() {
                 if (response.results['USER']['USER_ID'] !== 0) {
                     requestWithoutCacheAndRetry({
                         method: 'POST',
-                        url:    unofficialApiUrl,
-                        qs:     Object.assign(unofficialApiQueries, {
+                        url: unofficialApiUrl,
+                        qs: Object.assign(unofficialApiQueries, {
                             method: 'deezer.getUserData',
-                            cid:    getApiCid()
+                            cid: getApiCid()
                         }),
-                        json:   true,
-                        jar:    true
+                        json: true,
+                        jar: true
                     }).then((response) => {
                         if (!response || 0 < Object.keys(response.error).length) {
                             throw 'Unable to initialize Deezer API.';
@@ -432,9 +425,9 @@ function initDeezerCredentials() {
 
             let questions = [
                 {
-                    type:    'input',
-                    name:    'arl',
-                    prefix:  '♫',
+                    type: 'input',
+                    name: 'arl',
+                    prefix: '♫',
                     message: 'arl cookie:'
                 }
             ];
@@ -472,7 +465,7 @@ function selectMusicQuality() {
         if (cliHelp || null === cliHelp) {
             const helpSections = [
                 {
-                    header:     'CLI Options',
+                    header: 'CLI Options',
                     optionList: cliOptionDefinitions
                 },
                 {
@@ -500,7 +493,6 @@ function selectMusicQuality() {
                     break;
             }
 
-            DOWNLOAD_DIR = nodePath.normalize(cliPath).replace(/\/$|\\$/, '');
             DOWNLOAD_MODE = cliDownloadMode;
 
             downloadSpinner.warn(chalk.yellow('Do not scroll while downloading! This will mess up the UI!'));
@@ -524,9 +516,9 @@ function selectMusicQuality() {
     } else {
         inquirer.prompt([
             {
-                type:    'list',
-                name:    'musicQuality',
-                prefix:  '♫',
+                type: 'list',
+                name: 'musicQuality',
+                prefix: '♫',
                 message: 'Select music quality:',
                 choices: [
                     'MP3  - 128  kbps',
@@ -559,9 +551,9 @@ function selectMusicQuality() {
 function selectDownloadMode() {
     inquirer.prompt([
         {
-            type:    'list',
-            name:    'downloadMode',
-            prefix:  '♫',
+            type: 'list',
+            name: 'downloadMode',
+            prefix: '♫',
             message: 'Select download mode:',
             choices: [
                 'Single (Download single link)',
@@ -650,10 +642,10 @@ function askForNewDownload() {
 
     let questions = [
         {
-            type:     'input',
-            name:     'deezerUrl',
-            prefix:   '♫',
-            message:  'Deezer URL:',
+            type: 'input',
+            name: 'deezerUrl',
+            prefix: '♫',
+            message: 'Deezer URL:',
             validate: (deezerUrl) => {
                 if (deezerUrl) {
                     let deezerUrlType = getDeezerUrlParts(deezerUrl).type;
@@ -923,7 +915,7 @@ function getDeezerUrlParts(deezerUrl) {
 
     return {
         type: urlParts[1],
-        id:   urlParts[2]
+        id: urlParts[2]
     };
 }
 
@@ -936,21 +928,21 @@ function downloadArtist(id) {
     return new Promise((resolve, reject) => {
         let requestParams = {
             method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
+            url: unofficialApiUrl,
+            qs: Object.assign(unofficialApiQueries, {
                 method: 'artist.getData',
-                cid:    getApiCid()
+                cid: getApiCid()
             }),
-            body:   {
-                art_id:         id,
+            body: {
+                art_id: id,
                 filter_role_id: [0],
-                lang:           'us',
-                tab:            0,
-                nb:             -1,
-                start:          0
+                lang: 'us',
+                tab: 0,
+                nb: -1,
+                start: 0
             },
-            json:   true,
-            jar:    true
+            json: true,
+            jar: true
         };
 
         requestWithCache(requestParams).then((response) => {
@@ -977,12 +969,12 @@ function downloadArtist(id) {
                 requestParams.qs.method = 'album.getDiscography';
                 requestParams.qs.cid = getApiCid();
                 requestParams.body = {
-                    art_id:         id,
+                    art_id: id,
                     filter_role_id: [0],
-                    lang:           'us',
-                    nb:             500,
-                    nb_songs:       -1,
-                    start:          0
+                    lang: 'us',
+                    nb: 500,
+                    nb_songs: -1,
+                    start: 0
                 };
 
                 requestWithoutCache(requestParams).then((response) => {
@@ -1051,8 +1043,8 @@ function downloadMultiple(type, id) {
             requestQueries.method = 'deezer.pageAlbum';
             requestBody = {
                 alb_id: id,
-                lang:   'en',
-                tab:    0
+                lang: 'en',
+                tab: 0
             };
             break;
 
@@ -1060,12 +1052,12 @@ function downloadMultiple(type, id) {
             requestQueries.method = 'deezer.pagePlaylist';
             requestBody = {
                 playlist_id: id,
-                lang:        'en',
-                nb:          -1,
-                start:       0,
-                tab:         0,
-                tags:        true,
-                header:      true
+                lang: 'en',
+                nb: -1,
+                start: 0,
+                tab: 0,
+                tags: true,
+                header: true
             };
             break;
 
@@ -1073,19 +1065,19 @@ function downloadMultiple(type, id) {
             requestQueries.method = 'deezer.pageProfile';
             requestBody = {
                 user_id: id,
-                tab:     'loved',
-                nb:      -1
+                tab: 'loved',
+                nb: -1
             };
             break;
     }
 
     let requestParams = {
         method: 'POST',
-        url:    unofficialApiUrl,
-        qs:     requestQueries,
-        body:   requestBody,
-        json:   true,
-        jar:    true
+        url: unofficialApiUrl,
+        qs: requestQueries,
+        body: requestBody,
+        json: true,
+        jar: true
     };
 
     let request = requestWithoutCache;
@@ -1217,6 +1209,93 @@ function getNumberOfParallelDownloads() {
     return numberOfParallel;
 }
 
+function getPathForTrackInfos(trackInfos, albumInfos) {
+    let artistName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_ART_NAME));
+
+    if ('' === artistName.trim()) {
+        artistName = 'Unknown artist';
+    }
+
+    let albumType = 'Album';
+
+    if (albumInfos.TYPE) {
+        albumType = albumInfos.TYPE.toLowerCase();
+
+        if ('ep' === albumType) {
+            albumType = 'EP';
+        } else {
+            albumType = capitalizeFirstLetter(albumType);
+        }
+    }
+
+    let albumName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_TITLE));
+
+    if ('' === albumName.trim()) {
+        albumName = 'Unknown album';
+    }
+
+    let variableData = {
+        "title": multipleWhitespacesToSingle(sanitizeFilename(trackInfos.SNG_TITLE_VERSION)),
+        "artist": artistName,
+        "album": albumName,
+        "type": albumType,
+        'disc': toTwoDigits(trackInfos.DISK_NUMBER)
+    };
+
+    if (trackInfos.TRACK_NUMBER) {
+        variableData['number'] = toTwoDigits(trackInfos.TRACK_NUMBER);
+    }
+
+    let dirPath;
+    if (trackInfos.ALB_NUM_DISCS > 1) {
+        dirPath = namingService.getDiscPath(variableData);
+    } else {
+        dirPath = namingService.getPath(variableData);
+    }
+
+    return dirPath
+}
+
+function getFileNameForTrackInfos(trackInfos, albumInfos) {
+    let artistName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_ART_NAME));
+
+    if ('' === artistName.trim()) {
+        artistName = 'Unknown artist';
+    }
+
+    let albumType = 'Album';
+
+    if (albumInfos.TYPE) {
+        albumType = albumInfos.TYPE.toLowerCase();
+
+        if ('ep' === albumType) {
+            albumType = 'EP';
+        } else {
+            albumType = capitalizeFirstLetter(albumType);
+        }
+    }
+
+    let albumName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_TITLE));
+
+    if ('' === albumName.trim()) {
+        albumName = 'Unknown album';
+    }
+
+    let variableData = {
+        "title": multipleWhitespacesToSingle(sanitizeFilename(trackInfos.SNG_TITLE_VERSION)),
+        "artist": artistName,
+        "album": albumName,
+        "type": albumType,
+        'disc': toTwoDigits(trackInfos.DISK_NUMBER)
+    };
+
+    if (trackInfos.TRACK_NUMBER) {
+        variableData['number'] = toTwoDigits(trackInfos.TRACK_NUMBER);
+    }
+
+    return namingService.getFileName(variableData);
+}
+
 /**
  * Map through a track list and download it.
  *
@@ -1233,58 +1312,32 @@ function trackListDownload(trackList, albumInfos = {}) {
             trackAlbumInfos = albumInfos[trackInfos.ALB_ID];
         }
 
+        trackInfos.ALB_ART_NAME = trackInfos.ART_NAME;
+
+        if (albumInfos.ART_NAME) {
+            trackInfos.ALB_ART_NAME = albumInfos.ART_NAME;
+        }
+
         trackInfos.SNG_TITLE_VERSION = trackInfos.SNG_TITLE;
 
         if (trackInfos.VERSION) {
             trackInfos.SNG_TITLE_VERSION = (trackInfos.SNG_TITLE + ' ' + trackInfos.VERSION).trim();
         }
 
-        let artistName = trackInfos.ART_NAME;
-
-        if (trackAlbumInfos && '' !== trackAlbumInfos.ART_NAME) {
-            artistName = trackAlbumInfos.ART_NAME;
-        }
-
-        artistName = multipleWhitespacesToSingle(sanitizeFilename(artistName));
-
-        if ('' === artistName.trim()) {
-            artistName = 'Unknown artist';
-        }
-
-        if ('various' === artistName.trim().toLowerCase()) {
-            artistName = 'Various Artists';
-        }
-
-        let albumName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_TITLE));
-
-        if ('' === albumName.trim()) {
-            albumName = 'Unknown album';
-        }
-
-        albumName += ' (Album)';
-
-        let saveFileDir = nodePath.join(DOWNLOAD_DIR, artistName, albumName);
-
-        if (trackAlbumInfos && trackAlbumInfos.SONGS && trackAlbumInfos.SONGS.data && 0 < trackAlbumInfos.SONGS.data.length && '' !== trackAlbumInfos.SONGS.data[trackAlbumInfos.SONGS.data.length - 1].DISK_NUMBER) {
-            const albumNumberOfDisks = trackAlbumInfos.SONGS.data[trackAlbumInfos.SONGS.data.length - 1].DISK_NUMBER;
-
-            if (albumNumberOfDisks > 1) {
-                saveFileDir += nodePath.join(saveFileDir, 'Disc ' + toTwoDigits(trackInfos.DISK_NUMBER));
-            }
-        }
-
-        let saveFileName = multipleWhitespacesToSingle(sanitizeFilename(toTwoDigits(trackInfos.TRACK_NUMBER) + ' ' + trackInfos.SNG_TITLE_VERSION));
         let fileExtension = 'mp3';
-
         if (musicQualities.FLAC.id === selectedMusicQuality.id) {
             fileExtension = 'flac';
         }
+
+        let saveFileName = getFileNameForTrackInfos(trackInfos, albumInfos) + '.' + fileExtension;
+        let saveFileDir = getPathForTrackInfos(trackInfos, albumInfos) + "/" + saveFileName;
+        let artistName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_ART_NAME));
 
         const downloadingMessage = artistName + ' - ' + trackInfos.SNG_TITLE_VERSION;
         downloadStateInstance.add(trackInfos.SNG_ID, downloadingMessage);
 
         if (fs.existsSync(saveFileDir)) {
-            let files = Finder.from(saveFileDir).findFiles(saveFileName + '.' + fileExtension);
+            let files = Finder.from(saveFileDir).findFiles(saveFileName);
 
             if (0 < files.length) {
                 addTrackToPlaylist(files[0], trackInfos);
@@ -1312,7 +1365,6 @@ function trackListDownload(trackList, albumInfos = {}) {
  * @param {Number}  numberRetry
  */
 function downloadSingleTrack(id, trackInfos = {}, albumInfos = {}, isAlternativeTrack = false, numberRetry = 0) {
-    let dirPath;
     let saveFilePath;
     let originalTrackInfos;
     let fileExtension = 'mp3';
@@ -1412,8 +1464,8 @@ function downloadSingleTrack(id, trackInfos = {}, albumInfos = {}, isAlternative
             if (!originalTrackInfos.ARTISTS || 0 === originalTrackInfos.ARTISTS.length) {
                 originalTrackInfos.ARTISTS = [
                     {
-                        ART_ID:      originalTrackInfos.ART_ID,
-                        ART_NAME:    originalTrackInfos.ALB_ART_NAME,
+                        ART_ID: originalTrackInfos.ART_ID,
+                        ART_NAME: originalTrackInfos.ALB_ART_NAME,
                         ART_PICTURE: originalTrackInfos.ART_PICTURE
                     }
                 ];
@@ -1468,109 +1520,70 @@ function downloadSingleTrack(id, trackInfos = {}, albumInfos = {}, isAlternative
                 trackInfos = originalTrackInfos;
             }
 
-            if (trackQuality) {
-                let artistName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_ART_NAME));
+            if (!trackQuality) {
+                return errorHandling(trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + '\n  › Deezer doesn\'t provide the song anymore');
+            }
 
-                if ('' === artistName.trim()) {
-                    artistName = 'Unknown artist';
-                }
+            if (musicQualities.FLAC.id === trackQuality.id) {
+                fileExtension = 'flac';
+            }
 
-                let albumType = 'Album';
+            saveFilePath = getPathForTrackInfos(trackInfos, albumInfos) + "/" + getFileNameForTrackInfos(trackInfos, albumInfos) + '.' + fileExtension;
 
-                if (albumInfos.TYPE) {
-                    albumType = albumInfos.TYPE.toLowerCase();
+            if (!fs.existsSync(saveFilePath) && !downloadStateInstance.isCurrentlyDownloadingPathUsed(saveFilePath)) {
+                downloadStateInstance.addCurrentlyDownloadingPath(saveFilePath);
 
-                    if ('ep' === albumType) {
-                        albumType = 'EP';
+                return downloadTrack(originalTrackInfos, trackQuality.id, saveFilePath).then((decryptedTrackBuffer) => {
+                    onTrackDownloadComplete(decryptedTrackBuffer);
+                }).catch((error) => {
+                    log.debug('Failed downloading "track/' + trackInfos.SNG_ID + '". Error: "' + error + '"');
+
+                    if (originalTrackInfos.FALLBACK && originalTrackInfos.FALLBACK.SNG_ID && trackInfos.SNG_ID !== originalTrackInfos.FALLBACK.SNG_ID && originalTrackInfos.SNG_ID !== originalTrackInfos.FALLBACK.SNG_ID) {
+                        downloadStateInstance.removeCurrentlyDownloadingPath(saveFilePath);
+                        downloadStateInstance.remove(originalTrackInfos.SNG_ID);
+
+                        log.debug('Using alternative "track/' + originalTrackInfos.FALLBACK.SNG_ID + '" for "track/' + trackInfos.SNG_ID + '"');
+
+                        downloadSingleTrack(originalTrackInfos.FALLBACK.SNG_ID, trackInfos, albumInfos, true).then(() => {
+                            resolve();
+                        });
+
+                        const error = {
+                            message: '-',
+                            name: 'notAvailableButAlternative'
+                        };
+
+                        errorHandling(error);
                     } else {
-                        albumType = capitalizeFirstLetter(albumType);
-                    }
-                }
-
-                let albumName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_TITLE));
-
-                if ('' === albumName.trim()) {
-                    albumName = 'Unknown album';
-                }
-
-                albumName += ' (' + albumType + ')';
-
-                if (trackInfos.ALB_NUM_DISCS > 1) {
-                    dirPath = nodePath.join(DOWNLOAD_DIR, artistName, albumName, 'Disc ' + toTwoDigits(trackInfos.DISK_NUMBER));
-                } else {
-                    dirPath = nodePath.join(DOWNLOAD_DIR, artistName, albumName);
-                }
-
-                if (musicQualities.FLAC.id === trackQuality.id) {
-                    fileExtension = 'flac';
-                }
-                saveFilePath = dirPath + nodePath.sep;
-
-                if (trackInfos.TRACK_NUMBER) {
-                    saveFilePath += toTwoDigits(trackInfos.TRACK_NUMBER) + ' ';
-                }
-
-                saveFilePath += multipleWhitespacesToSingle(sanitizeFilename(trackInfos.SNG_TITLE_VERSION));
-
-                saveFilePath += '.' + fileExtension;
-
-                if (!fs.existsSync(saveFilePath) && !downloadStateInstance.isCurrentlyDownloadingPathUsed(saveFilePath)) {
-                    downloadStateInstance.addCurrentlyDownloadingPath(saveFilePath);
-
-                    return downloadTrack(originalTrackInfos, trackQuality.id, saveFilePath).then((decryptedTrackBuffer) => {
-                        onTrackDownloadComplete(decryptedTrackBuffer);
-                    }).catch((error) => {
-                        log.debug('Failed downloading "track/' + trackInfos.SNG_ID + '". Error: "' + error + '"');
-
-                        if (originalTrackInfos.FALLBACK && originalTrackInfos.FALLBACK.SNG_ID && trackInfos.SNG_ID !== originalTrackInfos.FALLBACK.SNG_ID && originalTrackInfos.SNG_ID !== originalTrackInfos.FALLBACK.SNG_ID) {
+                        getTrackAlternative(trackInfos).then((alternativeTrackInfos) => {
                             downloadStateInstance.removeCurrentlyDownloadingPath(saveFilePath);
                             downloadStateInstance.remove(originalTrackInfos.SNG_ID);
 
-                            log.debug('Using alternative "track/' + originalTrackInfos.FALLBACK.SNG_ID + '" for "track/' + trackInfos.SNG_ID + '"');
+                            log.debug('Using alternative "track/' + alternativeTrackInfos.SNG_ID + '" for "track/' + trackInfos.SNG_ID + '"');
 
-                            downloadSingleTrack(originalTrackInfos.FALLBACK.SNG_ID, trackInfos, albumInfos, true).then(() => {
+                            if (albumInfos.ALB_TITLE) {
+                                albumInfos = {};
+                            }
+
+                            downloadSingleTrack(alternativeTrackInfos.SNG_ID, trackInfos, albumInfos, true).then(() => {
                                 resolve();
                             });
+                        }).catch(() => {
+                            const errorMessage = trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + '\n  › Deezer doesn\'t provide the song anymore';
 
-                            const error = {
-                                message: '-',
-                                name:    'notAvailableButAlternative'
-                            };
-
-                            errorHandling(error);
-                        } else {
-                            getTrackAlternative(trackInfos).then((alternativeTrackInfos) => {
-                                downloadStateInstance.removeCurrentlyDownloadingPath(saveFilePath);
-                                downloadStateInstance.remove(originalTrackInfos.SNG_ID);
-
-                                log.debug('Using alternative "track/' + alternativeTrackInfos.SNG_ID + '" for "track/' + trackInfos.SNG_ID + '"');
-
-                                if (albumInfos.ALB_TITLE) {
-                                    albumInfos = {};
-                                }
-
-                                downloadSingleTrack(alternativeTrackInfos.SNG_ID, trackInfos, albumInfos, true).then(() => {
-                                    resolve();
-                                });
-                            }).catch(() => {
-                                const errorMessage = trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + '\n  › Deezer doesn\'t provide the song anymore';
-
-                                errorHandling(errorMessage);
-                            });
-                        }
-                    });
-                } else {
-                    addTrackToPlaylist(saveFilePath, trackInfos);
-
-                    const error = {
-                        message: trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + ' \n  › Song already exists',
-                        name:    'songAlreadyExists'
-                    };
-
-                    errorHandling(error);
-                }
+                            errorHandling(errorMessage);
+                        });
+                    }
+                });
             } else {
-                errorHandling(trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + '\n  › Deezer doesn\'t provide the song anymore');
+                addTrackToPlaylist(saveFilePath, trackInfos);
+
+                const error = {
+                    message: trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + ' \n  › Song already exists',
+                    name: 'songAlreadyExists'
+                };
+
+                errorHandling(error);
             }
         }
 
@@ -1641,16 +1654,16 @@ function getTrackInfos(id) {
     return new Promise((resolve, reject) => {
         return requestWithCache({
             method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
+            url: unofficialApiUrl,
+            qs: Object.assign(unofficialApiQueries, {
                 method: 'deezer.pageTrack',
-                cid:    getApiCid()
+                cid: getApiCid()
             }),
-            body:   {
+            body: {
                 sng_id: id
             },
-            json:   true,
-            jar:    true
+            json: true,
+            jar: true
         }).then((response) => {
             log.debug('Got track infos for "track/' + id + '"');
 
@@ -1690,19 +1703,19 @@ function getTrackAlternative(trackInfos) {
     return new Promise((resolve, reject) => {
         return requestWithCache({
             method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
+            url: unofficialApiUrl,
+            qs: Object.assign(unofficialApiQueries, {
                 method: 'search.music',
-                cid:    getApiCid()
+                cid: getApiCid()
             }),
-            body:   {
-                QUERY:  'artist:\'' + trackInfos.ART_NAME + '\' track:\'' + trackInfos.SNG_TITLE + '\'',
+            body: {
+                QUERY: 'artist:\'' + trackInfos.ART_NAME + '\' track:\'' + trackInfos.SNG_TITLE + '\'',
                 OUTPUT: 'TRACK',
-                NB:     50,
+                NB: 50,
                 FILTER: 0
             },
-            json:   true,
-            jar:    true
+            json: true,
+            jar: true
         }).then((response) => {
             log.debug('Got alternative track for "track/' + trackInfos.SNG_ID + '"');
             if (response && 0 === Object.keys(response.error).length && response.results && response.results.data && 0 < response.results.data.length) {
@@ -1786,18 +1799,18 @@ function getAlbumInfos(id) {
     return new Promise((resolve, reject) => {
         return requestWithCache({
             method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
+            url: unofficialApiUrl,
+            qs: Object.assign(unofficialApiQueries, {
                 method: 'deezer.pageAlbum',
-                cid:    getApiCid()
+                cid: getApiCid()
             }),
-            body:   {
+            body: {
                 alb_id: id,
-                lang:   'us',
-                tab:    0
+                lang: 'us',
+                tab: 0
             },
-            json:   true,
-            jar:    true
+            json: true,
+            jar: true
         }).then((response) => {
             log.debug('Got album infos for "album/' + id + '"');
 
@@ -1833,7 +1846,7 @@ function getAlbumInfos(id) {
 function getAlbumInfosOfficialApi(id) {
     return new Promise((resolve, reject) => {
         return requestWithCache({
-            url:  'https://api.deezer.com/album/' + id,
+            url: 'https://api.deezer.com/album/' + id,
             json: true
         }).then((albumInfos) => {
             log.debug('Got album infos (official api) for "album/' + id + '"');
@@ -1858,16 +1871,16 @@ function getTrackLyrics(id) {
     return new Promise((resolve, reject) => {
         return requestWithCache({
             method: 'POST',
-            url:    unofficialApiUrl,
-            qs:     Object.assign(unofficialApiQueries, {
+            url: unofficialApiUrl,
+            qs: Object.assign(unofficialApiQueries, {
                 method: 'song.getLyrics',
-                cid:    getApiCid()
+                cid: getApiCid()
             }),
-            body:   {
+            body: {
                 sng_id: id
             },
-            json:   true,
-            jar:    true
+            json: true,
+            jar: true
         }).then((response) => {
             log.debug('Got lyrics for "track/' + id + '"');
 
@@ -1915,8 +1928,8 @@ function addTrackToPlaylist(saveFilePath, trackInfos) {
         }
 
         PLAYLIST_FILE_ITEMS[trackInfos.SNG_ID] = {
-            trackTitle:    trackInfos.SNG_TITLE_VERSION,
-            trackArtist:   artistName,
+            trackTitle: trackInfos.SNG_TITLE_VERSION,
+            trackArtist: artistName,
             trackDuration: trackInfos.DURATION,
             trackSavePath: saveFilePathForPlaylist
         };
@@ -2083,9 +2096,9 @@ function downloadTrack(trackInfos, trackQualityId, saveFilePath, numberRetry = 0
         log.debug('Started downloading "track/' + trackInfos.SNG_ID + '" in "' + trackQualityId + '". Download url: "' + trackDownloadUrl + '"');
 
         requestWithoutCache({
-            url:      trackDownloadUrl,
-            headers:  httpHeaders,
-            jar:      true,
+            url: trackDownloadUrl,
+            headers: httpHeaders,
+            jar: true,
             encoding: null
         }).then((response) => {
             log.debug('Got download response for "track/' + trackInfos.SNG_ID + '"');
@@ -2142,9 +2155,9 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
                 log.debug('Started downloading album cover for "track/' + trackInfos.SNG_ID + '". Album cover url: "' + albumCoverUrl + '"');
 
                 requestWithoutCache({
-                    url:      albumCoverUrl,
-                    headers:  httpHeaders,
-                    jar:      true,
+                    url: albumCoverUrl,
+                    headers: httpHeaders,
+                    jar: true,
                     encoding: null
                 }).then((response) => {
                     log.debug('Got album cover download response for "track/' + trackInfos.SNG_ID + '"');
@@ -2225,36 +2238,36 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
 
                 function afterLyricsFetching() {
                     let trackMetadata = {
-                        title:                '',
-                        album:                '',
-                        releaseType:          '',
-                        genre:                '',
-                        artists:              [],
-                        albumArtist:          '',
-                        trackNumber:          '',
-                        trackNumberCombined:  '',
-                        partOfSet:            '',
-                        partOfSetCombined:    '',
-                        label:                '',
-                        copyright:            '',
-                        composer:             [],
-                        publisher:            [],
-                        producer:             [],
-                        engineer:             [],
-                        writer:               [],
-                        author:               [],
-                        mixer:                [],
-                        ISRC:                 '',
-                        duration:             '',
-                        bpm:                  '',
-                        upc:                  '',
-                        explicit:             '',
-                        tracktotal:           '',
-                        disctotal:            '',
-                        compilation:          '',
+                        title: '',
+                        album: '',
+                        releaseType: '',
+                        genre: '',
+                        artists: [],
+                        albumArtist: '',
+                        trackNumber: '',
+                        trackNumberCombined: '',
+                        partOfSet: '',
+                        partOfSetCombined: '',
+                        label: '',
+                        copyright: '',
+                        composer: [],
+                        publisher: [],
+                        producer: [],
+                        engineer: [],
+                        writer: [],
+                        author: [],
+                        mixer: [],
+                        ISRC: '',
+                        duration: '',
+                        bpm: '',
+                        upc: '',
+                        explicit: '',
+                        tracktotal: '',
+                        disctotal: '',
+                        compilation: '',
                         unsynchronisedLyrics: '',
-                        synchronisedLyrics:   '',
-                        media:                'Digital Media',
+                        synchronisedLyrics: '',
+                        media: 'Digital Media',
                     };
 
                     if (trackInfos.SNG_TITLE_VERSION) {
@@ -2447,64 +2460,64 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
                             .setFrame('TCOM', trackMetadata.composer)
                             .setFrame('TXXX', {
                                 description: 'Artists',
-                                value:       trackMetadata.artists.join('/')
+                                value: trackMetadata.artists.join('/')
                             })
                             .setFrame('TXXX', {
                                 description: 'RELEASETYPE',
-                                value:       trackMetadata.releaseType
+                                value: trackMetadata.releaseType
                             })
                             .setFrame('TXXX', {
                                 description: 'ISRC',
-                                value:       trackMetadata.ISRC
+                                value: trackMetadata.ISRC
                             })
                             .setFrame('TXXX', {
                                 description: 'BARCODE',
-                                value:       trackMetadata.upc
+                                value: trackMetadata.upc
                             })
                             .setFrame('TXXX', {
                                 description: 'LABEL',
-                                value:       trackMetadata.label
+                                value: trackMetadata.label
                             })
                             .setFrame('TXXX', {
                                 description: 'LYRICIST',
-                                value:       trackMetadata.writer.join('/')
+                                value: trackMetadata.writer.join('/')
                             })
                             .setFrame('TXXX', {
                                 description: 'MIXARTIST',
-                                value:       trackMetadata.mixer.join('/')
+                                value: trackMetadata.mixer.join('/')
                             })
                             .setFrame('TXXX', {
                                 description: 'INVOLVEDPEOPLE',
-                                value:       trackMetadata.producer.concat(trackMetadata.engineer).join('/')
+                                value: trackMetadata.producer.concat(trackMetadata.engineer).join('/')
                             })
                             .setFrame('TXXX', {
                                 description: 'COMPILATION',
-                                value:       trackMetadata.compilation
+                                value: trackMetadata.compilation
                             })
                             .setFrame('TXXX', {
                                 description: 'EXPLICIT',
-                                value:       trackMetadata.explicit
+                                value: trackMetadata.explicit
                             })
                             .setFrame('TXXX', {
                                 description: 'SOURCE',
-                                value:       'Deezer'
+                                value: 'Deezer'
                             })
                             .setFrame('TXXX', {
                                 description: 'SOURCEID',
-                                value:       trackInfos.SNG_ID
+                                value: trackInfos.SNG_ID
                             });
 
                         if ('' !== trackMetadata.unsynchronisedLyrics) {
                             writer.setFrame('USLT', {
                                 description: '',
-                                lyrics:      trackMetadata.unsynchronisedLyrics
+                                lyrics: trackMetadata.unsynchronisedLyrics
                             });
                         }
 
                         if (coverBuffer) {
                             writer.setFrame('APIC', {
-                                type:        3,
-                                data:        coverBuffer,
+                                type: 3,
+                                data: coverBuffer,
                                 description: ''
                             });
                         }
