@@ -14,7 +14,6 @@
 const chalk = require('chalk');
 const ora = require('ora');
 const sanitize = require('sanitize-filename');
-const Promise = require('bluebird');
 const cacheManager = require('cache-manager');
 require('./node_modules/cache-manager/lib/stores/memory');
 const requestPlus = require('request-plus');
@@ -30,6 +29,7 @@ const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 const openUrl = require('openurl');
 const packageJson = require('./package.json');
+const winston = require('winston');
 
 const configFile = 'SMLoadrConfig.json';
 const ConfigService = require('./src/service/ConfigService');
@@ -41,15 +41,19 @@ let encryptionService = new EncryptionService();
 const NamingService = require('./src/service/NamingService');
 let namingService = new NamingService(configService);
 
-const Log = require('log');
+
+const log = winston.createLogger({
+    level: 'debug',
+    transports: [
+        new winston.transports.File({filename: 'SMLoadr.log'})
+    ]
+});
 
 let PLAYLIST_DIR = 'PLAYLISTS/';
 let PLAYLIST_FILE_ITEMS = {};
 
 let DOWNLOAD_LINKS_FILE = 'downloadLinks.txt';
 let DOWNLOAD_MODE = 'single';
-
-const log = new Log('debug', fs.createWriteStream('SMLoadr.log'));
 
 const musicQualities = {
     MP3_128: {
