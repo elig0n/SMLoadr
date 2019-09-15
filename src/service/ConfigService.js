@@ -16,6 +16,7 @@ module.exports = class ConfigService {
         };
 
         this.loadConfig();
+        this.saveConfig();
     }
 
     loadConfig() {
