@@ -60,7 +60,7 @@ fi
 
 # If targets list is empty, use defaults
 if [[ -z "$targets" ]]; then
-	targets="latest-macos-x64,latest-win-x64,latest-win-x86,latest-linux-x64,latest-linux-x86"
+	targets="node9-macos-x64,node9-win-x64,node9-win-x86,node9-linux-x64,node9-linux-x86"
 fi
 
 # Package away

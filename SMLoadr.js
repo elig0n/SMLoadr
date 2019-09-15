@@ -23,7 +23,7 @@ const flacMetadata = require('./libs/flac-metadata');
 const inquirer = require('inquirer');
 const fs = require('fs');
 const stream = require('stream');
-const Finder = require('fs-finder');
+const Finder = require('fs-plus');
 const nodePath = require('path');
 const memoryStats = require('./libs/node-memory-stats');
 const commandLineArgs = require('command-line-args');
@@ -1342,7 +1342,7 @@ function trackListDownload(trackList, albumInfos = {}) {
         downloadStateInstance.add(trackInfos.SNG_ID, downloadingMessage);
 
         if (fs.existsSync(saveFileDir)) {
-            let files = Finder.from(saveFileDir).findFiles(saveFileName);
+            let files = Finder.listSync(saveFileDir + saveFileName);
 
             if (0 < files.length) {
                 addTrackToPlaylist(files[0], trackInfos);

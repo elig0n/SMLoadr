@@ -12,14 +12,14 @@
         "url": "https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr.git"
     },
     "engines": {
-        "node": "^12.0.0"
+        "node": ">=9.0.0"
     },
     "dependencies": {
         "cache-manager": "^2.10.0",
         "chalk": "^2.4.2",
         "command-line-args": "^5.1.1",
         "command-line-usage": "^5.0.5",
-        "fs-finder": "^1.8.1",
+        "fs-plus": "^3.1.1",
         "inquirer": "^6.5.2",
         "jsonfile": "^5.0.0",
         "openurl": "^1.1.1",
@@ -31,6 +31,6 @@
         "winston": "^3.2.1"
     },
     "devDependencies": {
-        "pkg": "*"
+        "pkg": "4.3.1"
     }
 }
