@@ -80,5 +80,7 @@ Guide on the [Wiki](https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/wiki/How-to-logi
 - We do **not** give any guarantee at all and we are **not** responsible for damages of all kinds!
 
 
+![Creative Commons License](https://i.creativecommons.org/l/by-nc/4.0/88x31.png)
+This work is licensed under a [Creative Commons Attribution-NonCommercial 4.0 International License](http://creativecommons.org/licenses/by-nc/4.0/).
 ---
-> Made with :heart: & :beer: by SMLoadrDevs | Copyright © 2018 SMLoadrDevs.
+> Made with :heart: & :beer: by SMLoadrDevs | Copyright © 2019 SMLoadrDevs.
