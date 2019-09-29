@@ -23,7 +23,6 @@ const flacMetadata = require('./libs/flac-metadata');
 const inquirer = require('inquirer');
 const fs = require('fs');
 const stream = require('stream');
-const Finder = require('fs-plus');
 const nodePath = require('path');
 const memoryStats = require('./libs/node-memory-stats');
 const commandLineArgs = require('command-line-args');
@@ -61,10 +60,6 @@ const musicQualities = {
         id: 1,
         name: 'MP3 - 128 kbps',
         aproxMaxSizeMb: '100'
-    },
-    MP3_256: {
-        id: 5,
-        name: 'MP3 - 256 kbps'
     },
     MP3_320: {
         id: 3,
@@ -143,7 +138,7 @@ let requestWithCache;
 
 function initRequest() {
     httpHeaders = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36',
         'cache-control': 'max-age=0',
         'accept-language': 'en-US,en;q=0.9,en-US;q=0.8,en;q=0.7',
         'accept-charset': 'utf-8,ISO-8859-1;q=0.8,*;q=0.7',
@@ -206,21 +201,13 @@ function initRequest() {
 
     // App info
     console.log(chalk.cyan('╔══════════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.cyan('║') + chalk.bold.yellow('                          SMLoadr v' + packageJson.version + '                          ') + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + chalk.bold.yellow('                         SMLoadr v' + packageJson.version + '                          ') + chalk.cyan('║'));
     console.log(chalk.cyan('╠══════════════════════════════════════════════════════════════════╣'));
     console.log(chalk.cyan('║') + ' DOWNLOADS:   https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases' + chalk.cyan('║'));
     console.log(chalk.cyan('║') + ' MANUAL:      https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr         ' + chalk.cyan('║'));
     console.log(chalk.cyan('║') + ' NEWS:        https://t.me/SMLoadrNews                            ' + chalk.cyan('║'));
-    console.log(chalk.cyan('╠══════════════════════════════════════════════════════════════════╣'));
-    console.log(chalk.cyan('║') + chalk.redBright(' ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ DONATE ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ') + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + ' BTC:         15GktD5M1kCmESyxfhA6EvmhGzWnRA8gvg                  ' + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + ' BTC Cash:    1LpLtLREzTWzba94wBBpJxcv7r6h6u1jgF                  ' + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + ' ETH:         0xd07c98bF53b21c4921E7b30491Fe0B86E714afeD          ' + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + ' ETH Classic: 0x7b8f83e4cE082BfCe5B6f6E4F204c914e925f242          ' + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + ' LTC:         LXJwhRmjfUruuwp76rJmLrhJJjHSG8TNxm                  ' + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + ' DASH:        XmHzFcygcwtqabgfEtJyq9cen1G5EnvuGR                  ' + chalk.cyan('║'));
-    console.log(chalk.cyan('╚══════════════════════════════════════════════════════════════════╝\n'));
-    console.log(chalk.yellow('Please read the latest manual thoroughly before asking for help!\n'));
+    console.log(chalk.cyan('╚══════════════════════════════════════════════════════════════════╝'));
+    console.log(chalk.yellow('Please read the manual thoroughly before asking for help!\n'));
 
 
     if (!fs.existsSync(DOWNLOAD_LINKS_FILE)) {
@@ -1341,19 +1328,6 @@ function trackListDownload(trackList, albumInfos = {}) {
         const downloadingMessage = artistName + ' - ' + trackInfos.SNG_TITLE_VERSION;
         downloadStateInstance.add(trackInfos.SNG_ID, downloadingMessage);
 
-        if (fs.existsSync(saveFileDir)) {
-            let files = Finder.listSync(saveFileDir + saveFileName);
-
-            if (0 < files.length) {
-                addTrackToPlaylist(files[0], trackInfos);
-
-                const warningMessage = artistName + ' - ' + trackInfos.SNG_TITLE_VERSION + ' \n  › Song already exists';
-                downloadStateInstance.success(trackInfos.SNG_ID, warningMessage);
-
-                return true;
-            }
-        }
-
         return downloadSingleTrack(trackInfos.SNG_ID, trackInfos, trackAlbumInfos);
     }, {
         concurrency: numberOfParallel
@@ -2010,9 +1984,9 @@ function fileSizeIsDefined(filesize) {
 /**
  * Get a downloadable track quality.
  *
- * FLAC -> 320kbps -> 256kbps -> 128kbps
- * 320kbps -> FLAC -> 256kbps -> 128kbps
- * 128kbps -> 256kbps -> 320kbps -> FLAC
+ * FLAC -> 320kbps -> 128kbps
+ * 320kbps -> FLAC -> 128kbps
+ * 128kbps -> 320kbps -> FLAC
  *
  * @param {Object} trackInfos
  *
@@ -2026,60 +2000,39 @@ function getValidTrackQuality(trackInfos) {
     if (musicQualities.FLAC === selectedMusicQuality) {
         if (!fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
             if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
-                if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_256)) {
-                    if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
-                        return false;
-                    }
-
-                    return musicQualities.MP3_128;
+                if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
+                    return false;
                 }
-
-                return musicQualities.MP3_256;
+                return musicQualities.MP3_128;
             }
-
             return musicQualities.MP3_320;
         }
-
         return musicQualities.FLAC;
     }
 
     if (musicQualities.MP3_320 === selectedMusicQuality) {
         if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
             if (!fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
-                if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_256)) {
-                    if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
-                        return false;
-                    }
-
-                    return musicQualities.MP3_128;
+                if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
+                    return false;
                 }
-
-                return musicQualities.MP3_256;
+                return musicQualities.MP3_128;
             }
-
             return musicQualities.FLAC;
         }
-
         return musicQualities.MP3_320;
     }
 
     if (musicQualities.MP3_128 === selectedMusicQuality) {
         if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
-            if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_256)) {
-                if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
-                    if (!fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
-                        return false;
-                    }
-
-                    return musicQualities.FLAC;
+            if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
+                if (!fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
+                    return false;
                 }
-
-                return musicQualities.MP3_320;
+                return musicQualities.FLAC;
             }
-
-            return musicQualities.MP3_256;
+            return musicQualities.MP3_320;
         }
-
         return musicQualities.MP3_128;
     }
 
