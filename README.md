@@ -45,8 +45,7 @@ Guide on the [Wiki](https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/wiki/How-to-logi
 
 | Parameter            | Short               | Default          | Supported values                        | Description                          |
 | :-----------------   | :------------------ | :--------------- | :-------------------------------------- | :----------------------------------- |
-| ```--quality```      | ```-q```            | ```MP3_320```    | MP3_128/MP3_320/FLAC            | The quality of the files to download |
-| ```--path```         | ```-p```            | ```DOWNLOADS/``` | Path with / in the end                  | The path to download the files to    |
+| ```--quality```      | ```-q```            | ```MP3_320```    | MP3_128/MP3_320/FLAC                    | The quality of the files to download |
 | ```--url```          | ```-u or nothing``` |                  | album/artist/playlist/profile/track url | Downloads single deezer url          |
 | ```--downloadmode``` | ```-d```            | ```single```     | ```all``` for "downloadLinks.txt"       | Downloads multiple urls from list    |
 | ```--help```         | ```-h```            |                  | _Nothing_                               | Shows the CLI help                   |
@@ -60,27 +59,12 @@ Guide on the [Wiki](https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/wiki/How-to-logi
 - Telegram community group: [https://t.me/SMLoadrCommunity](https://t.me/SMLoadrCommunity)
 - Telegram off-topic group: [https://t.me/SMLoadrOffTopic](https://t.me/SMLoadrOffTopic)
 
-
-
-## Donate
-
-- **BTC:** 15GktD5M1kCmESyxfhA6EvmhGzWnRA8gvg
-- **BTC Cash:** 1LpLtLREzTWzba94wBBpJxcv7r6h6u1jgF
-- **ETH:** 0xd07c98bF53b21c4921E7b30491Fe0B86E714afeD
-- **ETH Classic:** 0x7b8f83e4cE082BfCe5B6f6E4F204c914e925f242
-- **LTC:** LXJwhRmjfUruuwp76rJmLrhJJjHSG8TNxm
-- **DASH:** XmHzFcygcwtqabgfEtJyq9cen1G5EnvuGR
-
-
-
 ## Disclaimer
 
 - We do **not** call to commit crimes.
 - The usage of this tool **may be illegal** in your country! Please inform yourself.
 - We do **not** give any guarantee at all and we are **not** responsible for damages of all kinds!
 
-
-![Creative Commons License](https://i.creativecommons.org/l/by-nc/4.0/88x31.png)
-This work is licensed under a [Creative Commons Attribution-NonCommercial 4.0 International License](http://creativecommons.org/licenses/by-nc/4.0/).
+###This work is licensed under a [Creative Commons Attribution-NonCommercial 4.0 International License](http://creativecommons.org/licenses/by-nc/4.0/).
 ---
 > Made with :heart: & :beer: by SMLoadrDevs | Copyright © 2019 SMLoadrDevs.

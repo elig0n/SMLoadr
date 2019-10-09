@@ -1,16 +1,3 @@
-/**
- * Made with love & beer by SMLoadrDevs.
- * https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr
- *
- * Feel free to donate :)
- * BTC:         15GktD5M1kCmESyxfhA6EvmhGzWnRA8gvg
- * BTC Cash:    1LpLtLREzTWzba94wBBpJxcv7r6h6u1jgF
- * ETH:         0xd07c98bF53b21c4921E7b30491Fe0B86E714afeD
- * ETH Classic: 0x7b8f83e4cE082BfCe5B6f6E4F204c914e925f242
- * LTC:         LXJwhRmjfUruuwp76rJmLrhJJjHSG8TNxm
- * DASH:        XmHzFcygcwtqabgfEtJyq9cen1G5EnvuGR
- */
-
 const Promise = require('bluebird');
 const chalk = require('chalk');
 const ora = require('ora');
@@ -413,7 +400,7 @@ function initDeezerCredentials() {
         if (arl) {
             resolve();
         } else {
-            console.log(chalk.yellow('\nVisit https://www.deezer.com/register if you don\'t have an account yet.\n'));
+            console.log(chalk.yellow('\nHow to get arl: https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/wiki/How-to-login-via-cookie\n'));
 
             let questions = [
                 {
