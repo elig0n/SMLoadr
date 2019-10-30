@@ -188,7 +188,7 @@ function initRequest() {
 
     // App info
     console.log(chalk.cyan('╔══════════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.cyan('║') + chalk.bold.yellow('                         SMLoadr v' + packageJson.version + '                          ') + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + chalk.bold.yellow('                          SMLoadr v' + packageJson.version + '                          ') + chalk.cyan('║'));
     console.log(chalk.cyan('╠══════════════════════════════════════════════════════════════════╣'));
     console.log(chalk.cyan('║') + ' DOWNLOADS:   https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases' + chalk.cyan('║'));
     console.log(chalk.cyan('║') + ' MANUAL:      https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr         ' + chalk.cyan('║'));
@@ -1684,7 +1684,7 @@ function getTrackAlternative(trackInfos) {
             jar: true
         }).then((response) => {
             log.debug('Got alternative track for "track/' + trackInfos.SNG_ID + '"');
-            if (response && 0 === Object.keys(response.error).length && response.results && response.results.data && 0 < response.results.data.length) {
+            if (response && 0 === Object.keys(response.error).length && response.results && response.results.data && 0 > response.results.data.length) {
                 const foundTracks = response.results.data;
                 let matchingTracks = [];
                 if (foundTracks.length > 0) {
@@ -2056,7 +2056,7 @@ function downloadTrack(trackInfos, trackQualityId, saveFilePath, numberRetry = 0
                 let maxNumberRetry = 1;
 
                 if ((trackInfos.RIGHTS && 0 !== Object.keys(trackInfos.RIGHTS).length) || (trackInfos.AVAILABLE_COUNTRIES && trackInfos.AVAILABLE_COUNTRIES.STREAM_ADS && 0 < trackInfos.AVAILABLE_COUNTRIES.STREAM_ADS.length)) {
-                    maxNumberRetry = 20;
+                    maxNumberRetry = 2;
                 }
 
                 if (maxNumberRetry >= numberRetry) {
