@@ -188,7 +188,7 @@ function initRequest() {
 
     // App info
     console.log(chalk.cyan('╔══════════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.cyan('║') + chalk.bold.yellow('                          SMLoadr v' + packageJson.version + '                          ') + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + chalk.bold.yellow('                         SMLoadr v' + packageJson.version + '                          ') + chalk.cyan('║'));
     console.log(chalk.cyan('╠══════════════════════════════════════════════════════════════════╣'));
     console.log(chalk.cyan('║') + ' DOWNLOADS:   https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases' + chalk.cyan('║'));
     console.log(chalk.cyan('║') + ' MANUAL:      https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr         ' + chalk.cyan('║'));
@@ -288,7 +288,7 @@ function isUpdateAvailable() {
     return new Promise((resolve, reject) => {
         log.debug('Checking for update');
 
-        requestWithoutCacheAndRetry('https://pastebin.com/raw/1FE65caB').then((response) => {
+        requestWithoutCacheAndRetry('https://pastebin.com/raw/nqzfDRrU').then((response) => {
             log.debug('Checked for update on Pastebin. Response: "' + response + '"');
 
             if (response !== packageJson.version) {
