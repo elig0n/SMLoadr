@@ -194,7 +194,6 @@ function initRequest() {
     console.log(chalk.cyan('║') + ' MANUAL:      https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr         ' + chalk.cyan('║'));
     console.log(chalk.cyan('║') + ' NEWS:        https://t.me/SMLoadrNews                            ' + chalk.cyan('║'));
     console.log(chalk.cyan('╚══════════════════════════════════════════════════════════════════╝'));
-    console.log(chalk.yellow('Please read the manual thoroughly before asking for help!\n'));
 
 
     if (!fs.existsSync(DOWNLOAD_LINKS_FILE)) {
@@ -222,94 +221,23 @@ function initRequest() {
 function startApp() {
     initRequest();
 
-    downloadSpinner.text = 'Checking for update...';
-    downloadSpinner.start();
+    initDeezerCredentials().then(() => {
+        downloadSpinner.text = 'Initiating Deezer API...';
+        downloadSpinner.start();
 
-    isUpdateAvailable().then((response) => {
-        if (response) {
-            downloadSpinner.warn('New update available!\n  Please update to the latest version!');
+        initDeezerApi().then(() => {
+            downloadSpinner.succeed('Connected to Deezer API');
+            selectMusicQuality();
+        }).catch((err) => {
+            if ('Wrong Deezer credentials!' === err) {
+                downloadSpinner.fail('Wrong Deezer credentials!\n');
+                configService.set('arl', null);
+                configService.saveConfig();
 
-            setTimeout(() => {
-                openUrl.open('https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases');
-
-                if (isCli) {
-                    setTimeout(() => {
-                        process.exit(1);
-                    }, 100);
-                } else {
-                    setTimeout(() => {
-                        // Nothing, only to keep the app running
-                    }, 999999999);
-                }
-            }, 1000);
-        } else {
-            downloadSpinner.succeed('You have the latest version :)');
-
-            initDeezerCredentials().then(() => {
-                downloadSpinner.text = 'Initiating Deezer API...';
-                downloadSpinner.start();
-
-                initDeezerApi().then(() => {
-                    downloadSpinner.succeed('Connected to Deezer API');
-
-                    selectMusicQuality();
-                }).catch((err) => {
-                    if ('Wrong Deezer credentials!' === err) {
-                        downloadSpinner.fail('Wrong Deezer credentials!\n');
-
-                        configService.set('arl', null);
-
-                        configService.saveConfig();
-
-                        startApp();
-                    } else {
-                        downloadSpinner.fail(err);
-                    }
-                });
-            });
-        }
-    }).catch((err) => {
-        downloadSpinner.fail(err);
-
-        if (isCli) {
-            setTimeout(() => {
-                process.exit(1);
-            }, 100);
-        }
-    });
-}
-
-/**
- * Check if a new update of the app is available.
- *
- * @returns {Boolean}
- */
-function isUpdateAvailable() {
-    return new Promise((resolve, reject) => {
-        log.debug('Checking for update');
-
-        requestWithoutCacheAndRetry('https://pastebin.com/raw/nqzfDRrU').then((response) => {
-            log.debug('Checked for update on Pastebin. Response: "' + response + '"');
-
-            if (response !== packageJson.version) {
-                resolve(true);
+                startApp();
             } else {
-                resolve(false);
+                downloadSpinner.fail(err);
             }
-        }).catch(() => {
-            log.debug('Failed checking on pastebin for update. Trying git repo.');
-
-            requestWithoutCache('https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/raw/branch/master/VERSION.md?' + Date.now()).then((response) => {
-                log.debug('Checked for update on the git repo. Response: "' + response + '"');
-
-                if (response !== packageJson.version) {
-                    resolve(true);
-                } else {
-                    resolve(false);
-                }
-            }).catch(() => {
-                reject('Could not check for update!');
-            });
         });
     });
 }
