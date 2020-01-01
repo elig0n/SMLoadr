@@ -1,16 +1,14 @@
 #SMLoadr
 > A streaming music downloader.
-
-![Screenshot](screenshot1.png)
-
-![Screenshot](screenshot2.png)
-
 SMLoadr is a program for downloading music from streaming music services.
 
 It is intended for educational and private use only, and not as a tool for pirating and distributing music!
 
 Remember that the artists and studios put a lot of work into making music - purchase music to support them.
 
+![Screenshot](screenshot1.png)
+
+![Screenshot](screenshot2.png)
 
 ## Features
 
@@ -46,6 +44,7 @@ Guide on the [Wiki](https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/wiki/How-to-logi
 | Parameter            | Short               | Default          | Supported values                        | Description                          |
 | :-----------------   | :------------------ | :--------------- | :-------------------------------------- | :----------------------------------- |
 | ```--quality```      | ```-q```            | ```MP3_320```    | MP3_128/MP3_320/FLAC                    | The quality of the files to download |
+| ```--path```         | ```-p```            | ```DOWNLOADS/``` | Path with / in the end                  | Relative path for Downloads folder   |
 | ```--url```          | ```-u or nothing``` |                  | album/artist/playlist/profile/track url | Downloads single deezer url          |
 | ```--downloadmode``` | ```-d```            | ```single```     | ```all``` for "downloadLinks.txt"       | Downloads multiple urls from list    |
 | ```--help```         | ```-h```            |                  | _Nothing_                               | Shows the CLI help                   |
@@ -67,4 +66,4 @@ Guide on the [Wiki](https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/wiki/How-to-logi
 
 ####This work is licensed under a [Creative Commons Attribution-NonCommercial 4.0 International License](http://creativecommons.org/licenses/by-nc/4.0/).
 ---
-> Made with :heart: & :beer: by SMLoadrDevs | Copyright © 2019 SMLoadrDevs.
+> Made with :heart: & :beer: by SMLoadrDevs | Copyright © 2020 SMLoadrDevs.
