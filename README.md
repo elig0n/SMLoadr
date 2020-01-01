@@ -53,10 +53,7 @@ Guide on the [Wiki](https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/wiki/How-to-logi
 
 ## Downloads
 
-- Get stable releases here: [https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases](https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases)
-- Telegram news channel: [https://t.me/SMLoadrNews](https://t.me/SMLoadrNews)
-- Telegram community group: [https://t.me/SMLoadrCommunity](https://t.me/SMLoadrCommunity)
-- Telegram off-topic group: [https://t.me/SMLoadrOffTopic](https://t.me/SMLoadrOffTopic)
+- Get stable release here: [https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases](https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases)
 
 ## Disclaimer
 
