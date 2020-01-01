@@ -25,17 +25,7 @@ let configService = new ConfigService(configFile);
 const EncryptionService = require('./src/service/EncryptionService');
 let encryptionService = new EncryptionService();
 
-const NamingService = require('./src/service/NamingService');
-let namingService = new NamingService(configService);
-
-
-const log = winston.createLogger({
-    level: 'debug',
-    transports: [
-        new winston.transports.File({filename: 'SMLoadr.log'})
-    ]
-});
-
+let DOWNLOAD_DIR = 'DOWNLOADS/';
 let PLAYLIST_DIR = 'PLAYLISTS/';
 let PLAYLIST_FILE_ITEMS = {};
 
@@ -78,6 +68,13 @@ const cliOptionDefinitions = [
         type: String,
         defaultValue: 'MP3_320',
         description: 'The quality of the files to download: MP3_128/MP3_320/FLAC'
+    },
+    {
+        name:         'path',
+        alias:        'p',
+        type:         String,
+        defaultValue: DOWNLOAD_DIR,
+        description:  'The path to download the files to: path with / in the end'
     },
     {
         name: 'url',
@@ -125,7 +122,7 @@ let requestWithCache;
 
 function initRequest() {
     httpHeaders = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
         'cache-control': 'max-age=0',
         'accept-language': 'en-US,en;q=0.9,en-US;q=0.8,en;q=0.7',
         'accept-charset': 'utf-8,ISO-8859-1;q=0.8,*;q=0.7',
@@ -175,24 +172,19 @@ function initRequest() {
  */
 (function initApp() {
     process.on('unhandledRejection', (reason, p) => {
-        log.debug(reason + 'Unhandled Rejection at Promise' + p);
         console.error('\n' + reason + '\nUnhandled Rejection at Promise' + JSON.stringify(p) + '\n');
     });
 
     process.on('uncaughtException', (err) => {
-        log.debug(err + 'Uncaught Exception thrown');
         console.error('\n' + err + '\nUncaught Exception thrown' + '\n');
-
         process.exit(1);
     });
 
     // App info
     console.log(chalk.cyan('╔══════════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.cyan('║') + chalk.bold.yellow('                         SMLoadr v' + packageJson.version + '                          ') + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + chalk.bold.yellow('                          SMLoadr v' + packageJson.version + '                         ') + chalk.cyan('║'));
     console.log(chalk.cyan('╠══════════════════════════════════════════════════════════════════╣'));
-    console.log(chalk.cyan('║') + ' DOWNLOADS:   https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr/releases' + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + ' MANUAL:      https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr         ' + chalk.cyan('║'));
-    console.log(chalk.cyan('║') + ' NEWS:        https://t.me/SMLoadrNews                            ' + chalk.cyan('║'));
+    console.log(chalk.cyan('║') + ' GIT:      https://git.fuwafuwa.moe/SMLoadrDev/SMLoadr            ' + chalk.cyan('║'));
     console.log(chalk.cyan('╚══════════════════════════════════════════════════════════════════╝'));
 
 
@@ -201,6 +193,7 @@ function initRequest() {
         fs.writeFileSync(DOWNLOAD_LINKS_FILE, '');
     }
 
+	nodePath.normalize(DOWNLOAD_DIR).replace(/\/$|\\$/, '');
     nodePath.normalize(PLAYLIST_DIR).replace(/\/$|\\$/, '');
 
     if (isCli) {
@@ -230,7 +223,7 @@ function startApp() {
             selectMusicQuality();
         }).catch((err) => {
             if ('Wrong Deezer credentials!' === err) {
-                downloadSpinner.fail('Wrong Deezer credentials!\n');
+                downloadSpinner.fail('Wrong Deezer credentials!');
                 configService.set('arl', null);
                 configService.saveConfig();
 
@@ -264,7 +257,6 @@ function ensureDir(filePath) {
  */
 function initDeezerApi() {
     return new Promise((resolve, reject) => {
-        log.debug('Init Deezer API');
 
         requestWithoutCacheAndRetry({
             method: 'POST',
@@ -294,7 +286,6 @@ function initDeezerApi() {
                             throw 'Unable to initialize Deezer API.';
                         } else {
                             if (response.results && response.results.checkForm) {
-                                log.debug('Successfully initiated Deezer API. Checkform: "' + response.results.checkForm + '"');
 
                                 unofficialApiQueries.api_token = response.results.checkForm;
 
@@ -400,6 +391,7 @@ function selectMusicQuality() {
                     break;
             }
 
+            DOWNLOAD_DIR = nodePath.normalize(cliPath).replace(/\/$|\\$/, '');
             DOWNLOAD_MODE = cliDownloadMode;
 
             downloadSpinner.warn(chalk.yellow('Do not scroll while downloading! This will mess up the UI!'));
@@ -783,8 +775,6 @@ let downloadStateInstance = new downloadState();
  * @param {Boolean} downloadFromFile
  */
 function startDownload(deezerUrl, downloadFromFile = false) {
-    log.debug('------------------------------------------');
-    log.debug('Started download task: "' + deezerUrl + '"');
 
     const deezerUrlParts = getDeezerUrlParts(deezerUrl);
 
@@ -868,7 +858,6 @@ function downloadArtist(id) {
                     throw 'Could not fetch the artist!';
                 }
             } else {
-                log.debug('Got artist infos for "artist/' + id + '"');
 
                 const artistName = response.results.ART_NAME;
                 downloadStateInstance.setDownloadTypeName(artistName);
@@ -900,7 +889,6 @@ function downloadArtist(id) {
                             throw 'Could not fetch "' + artistName + '" albums!';
                         }
                     } else {
-                        log.debug('Got all albums for "artist/' + id + '"');
 
                         if (0 < response.results.data.length) {
                             let trackList = [];
@@ -1012,7 +1000,6 @@ function downloadMultiple(type, id) {
                     throw 'Could not fetch the ' + type + '!';
                 }
             } else {
-                log.debug('Got track list for "' + type + '/' + id + '"');
 
                 let trackList = [];
                 let albumList = {};
@@ -1116,93 +1103,6 @@ function getNumberOfParallelDownloads() {
     return numberOfParallel;
 }
 
-function getPathForTrackInfos(trackInfos, albumInfos) {
-    let artistName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_ART_NAME));
-
-    if ('' === artistName.trim()) {
-        artistName = 'Unknown artist';
-    }
-
-    let albumType = 'Album';
-
-    if (albumInfos.TYPE) {
-        albumType = albumInfos.TYPE.toLowerCase();
-
-        if ('ep' === albumType) {
-            albumType = 'EP';
-        } else {
-            albumType = capitalizeFirstLetter(albumType);
-        }
-    }
-
-    let albumName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_TITLE));
-
-    if ('' === albumName.trim()) {
-        albumName = 'Unknown album';
-    }
-
-    let variableData = {
-        "title": multipleWhitespacesToSingle(sanitizeFilename(trackInfos.SNG_TITLE_VERSION)),
-        "artist": artistName,
-        "album": albumName,
-        "type": albumType,
-        'disc': toTwoDigits(trackInfos.DISK_NUMBER)
-    };
-
-    if (trackInfos.TRACK_NUMBER) {
-        variableData['number'] = toTwoDigits(trackInfos.TRACK_NUMBER);
-    }
-
-    let dirPath;
-    if (trackInfos.ALB_NUM_DISCS > 1) {
-        dirPath = namingService.getDiscPath(variableData);
-    } else {
-        dirPath = namingService.getPath(variableData);
-    }
-
-    return dirPath
-}
-
-function getFileNameForTrackInfos(trackInfos, albumInfos) {
-    let artistName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_ART_NAME));
-
-    if ('' === artistName.trim()) {
-        artistName = 'Unknown artist';
-    }
-
-    let albumType = 'Album';
-
-    if (albumInfos.TYPE) {
-        albumType = albumInfos.TYPE.toLowerCase();
-
-        if ('ep' === albumType) {
-            albumType = 'EP';
-        } else {
-            albumType = capitalizeFirstLetter(albumType);
-        }
-    }
-
-    let albumName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_TITLE));
-
-    if ('' === albumName.trim()) {
-        albumName = 'Unknown album';
-    }
-
-    let variableData = {
-        "title": multipleWhitespacesToSingle(sanitizeFilename(trackInfos.SNG_TITLE_VERSION)),
-        "artist": artistName,
-        "album": albumName,
-        "type": albumType,
-        'disc': toTwoDigits(trackInfos.DISK_NUMBER)
-    };
-
-    if (trackInfos.TRACK_NUMBER) {
-        variableData['number'] = toTwoDigits(trackInfos.TRACK_NUMBER);
-    }
-
-    return namingService.getFileName(variableData);
-}
-
 /**
  * Map through a track list and download it.
  *
@@ -1219,26 +1119,52 @@ function trackListDownload(trackList, albumInfos = {}) {
             trackAlbumInfos = albumInfos[trackInfos.ALB_ID];
         }
 
-        trackInfos.ALB_ART_NAME = trackInfos.ART_NAME;
-
-        if (albumInfos.ART_NAME) {
-            trackInfos.ALB_ART_NAME = albumInfos.ART_NAME;
-        }
-
         trackInfos.SNG_TITLE_VERSION = trackInfos.SNG_TITLE;
 
         if (trackInfos.VERSION) {
             trackInfos.SNG_TITLE_VERSION = (trackInfos.SNG_TITLE + ' ' + trackInfos.VERSION).trim();
         }
 
+        let artistName = trackInfos.ART_NAME;
+
+        if (trackAlbumInfos && '' !== trackAlbumInfos.ART_NAME) {
+            artistName = trackAlbumInfos.ART_NAME;
+        }
+
+        artistName = multipleWhitespacesToSingle(sanitizeFilename(artistName));
+
+        if ('' === artistName.trim()) {
+            artistName = 'Unknown artist';
+        }
+
+        if ('various' === artistName.trim().toLowerCase()) {
+            artistName = 'Various Artists';
+        }
+
+        let albumName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_TITLE));
+
+        if ('' === albumName.trim()) {
+            albumName = 'Unknown album';
+        }
+
+        albumName += ' (Album)';
+
+        let saveFileDir = nodePath.join(DOWNLOAD_DIR, artistName, albumName);
+
+        if (trackAlbumInfos && trackAlbumInfos.SONGS && trackAlbumInfos.SONGS.data && 0 < trackAlbumInfos.SONGS.data.length && '' !== trackAlbumInfos.SONGS.data[trackAlbumInfos.SONGS.data.length - 1].DISK_NUMBER) {
+            const albumNumberOfDisks = trackAlbumInfos.SONGS.data[trackAlbumInfos.SONGS.data.length - 1].DISK_NUMBER;
+
+            if (albumNumberOfDisks > 1) {
+                saveFileDir += nodePath.join(saveFileDir, 'Disc ' + toTwoDigits(trackInfos.DISK_NUMBER));
+            }
+        }
+
+        let saveFileName = multipleWhitespacesToSingle(sanitizeFilename(toTwoDigits(trackInfos.TRACK_NUMBER) + ' ' + trackInfos.SNG_TITLE_VERSION));
         let fileExtension = 'mp3';
+
         if (musicQualities.FLAC.id === selectedMusicQuality.id) {
             fileExtension = 'flac';
         }
-
-        let saveFileName = getFileNameForTrackInfos(trackInfos, albumInfos) + '.' + fileExtension;
-        let saveFileDir = getPathForTrackInfos(trackInfos, albumInfos) + "/" + saveFileName;
-        let artistName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_ART_NAME));
 
         const downloadingMessage = artistName + ' - ' + trackInfos.SNG_TITLE_VERSION;
         downloadStateInstance.add(trackInfos.SNG_ID, downloadingMessage);
@@ -1259,19 +1185,16 @@ function trackListDownload(trackList, albumInfos = {}) {
  * @param {Number}  numberRetry
  */
 function downloadSingleTrack(id, trackInfos = {}, albumInfos = {}, isAlternativeTrack = false, numberRetry = 0) {
+    let dirPath;
     let saveFilePath;
     let originalTrackInfos;
     let fileExtension = 'mp3';
     let trackQuality;
 
-    log.debug('Start downloading "track/' + id + '"');
-
     return new Promise((resolve) => {
         if ('-' === id.toString().charAt(0) && 0 < Object.keys(trackInfos).length) {
             getTrackAlternative(trackInfos).then((alternativeTrackInfos) => {
                 downloadStateInstance.remove(id);
-
-                log.debug('Using alternative "track/' + alternativeTrackInfos.SNG_ID + '" for "track/' + trackInfos.SNG_ID + '"');
 
                 downloadSingleTrack(alternativeTrackInfos.SNG_ID, {}, {}, true).then(() => {
                     resolve();
@@ -1414,70 +1337,104 @@ function downloadSingleTrack(id, trackInfos = {}, albumInfos = {}, isAlternative
                 trackInfos = originalTrackInfos;
             }
 
-            if (!trackQuality) {
-                return errorHandling(trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + '\n  › Deezer doesn\'t provide the song anymore');
-            }
+            if (trackQuality) {
+                let artistName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_ART_NAME));
 
-            if (musicQualities.FLAC.id === trackQuality.id) {
-                fileExtension = 'flac';
-            }
+                if ('' === artistName.trim()) {
+                    artistName = 'Unknown artist';
+                }
 
-            saveFilePath = getPathForTrackInfos(trackInfos, albumInfos) + "/" + getFileNameForTrackInfos(trackInfos, albumInfos) + '.' + fileExtension;
+                let albumType = 'Album';
 
-            if (!fs.existsSync(saveFilePath) && !downloadStateInstance.isCurrentlyDownloadingPathUsed(saveFilePath)) {
-                downloadStateInstance.addCurrentlyDownloadingPath(saveFilePath);
+                if (albumInfos.TYPE) {
+                    albumType = albumInfos.TYPE.toLowerCase();
 
-                return downloadTrack(originalTrackInfos, trackQuality.id, saveFilePath).then((decryptedTrackBuffer) => {
-                    onTrackDownloadComplete(decryptedTrackBuffer);
-                }).catch((error) => {
-                    log.debug('Failed downloading "track/' + trackInfos.SNG_ID + '". Error: "' + error + '"');
-
-                    if (originalTrackInfos.FALLBACK && originalTrackInfos.FALLBACK.SNG_ID && trackInfos.SNG_ID !== originalTrackInfos.FALLBACK.SNG_ID && originalTrackInfos.SNG_ID !== originalTrackInfos.FALLBACK.SNG_ID) {
-                        downloadStateInstance.removeCurrentlyDownloadingPath(saveFilePath);
-                        downloadStateInstance.remove(originalTrackInfos.SNG_ID);
-
-                        log.debug('Using alternative "track/' + originalTrackInfos.FALLBACK.SNG_ID + '" for "track/' + trackInfos.SNG_ID + '"');
-
-                        downloadSingleTrack(originalTrackInfos.FALLBACK.SNG_ID, trackInfos, albumInfos, true).then(() => {
-                            resolve();
-                        });
-
-                        const error = {
-                            message: '-',
-                            name: 'notAvailableButAlternative'
-                        };
-
-                        errorHandling(error);
+                    if ('ep' === albumType) {
+                        albumType = 'EP';
                     } else {
-                        getTrackAlternative(trackInfos).then((alternativeTrackInfos) => {
+                        albumType = capitalizeFirstLetter(albumType);
+                    }
+                }
+
+                let albumName = multipleWhitespacesToSingle(sanitizeFilename(trackInfos.ALB_TITLE));
+
+                if ('' === albumName.trim()) {
+                    albumName = 'Unknown album';
+                }
+
+                albumName += ' (' + albumType + ')';
+
+                if (trackInfos.ALB_NUM_DISCS > 1) {
+                    dirPath = nodePath.join(DOWNLOAD_DIR, artistName, albumName, 'Disc ' + toTwoDigits(trackInfos.DISK_NUMBER));
+                } else {
+                    dirPath = nodePath.join(DOWNLOAD_DIR, artistName, albumName);
+                }
+
+                if (musicQualities.FLAC.id === trackQuality.id) {
+                    fileExtension = 'flac';
+                }
+                saveFilePath = dirPath + nodePath.sep;
+
+                if (trackInfos.TRACK_NUMBER) {
+                    saveFilePath += toTwoDigits(trackInfos.TRACK_NUMBER) + ' ';
+                }
+
+                saveFilePath += multipleWhitespacesToSingle(sanitizeFilename(trackInfos.SNG_TITLE_VERSION));
+
+                saveFilePath += '.' + fileExtension;
+
+                if (!fs.existsSync(saveFilePath) && !downloadStateInstance.isCurrentlyDownloadingPathUsed(saveFilePath)) {
+                    downloadStateInstance.addCurrentlyDownloadingPath(saveFilePath);
+
+                    return downloadTrack(originalTrackInfos, trackQuality.id, saveFilePath).then((decryptedTrackBuffer) => {
+                        onTrackDownloadComplete(decryptedTrackBuffer);
+                    }).catch((error) => {
+
+                        if (originalTrackInfos.FALLBACK && originalTrackInfos.FALLBACK.SNG_ID && trackInfos.SNG_ID !== originalTrackInfos.FALLBACK.SNG_ID && originalTrackInfos.SNG_ID !== originalTrackInfos.FALLBACK.SNG_ID) {
                             downloadStateInstance.removeCurrentlyDownloadingPath(saveFilePath);
                             downloadStateInstance.remove(originalTrackInfos.SNG_ID);
 
-                            log.debug('Using alternative "track/' + alternativeTrackInfos.SNG_ID + '" for "track/' + trackInfos.SNG_ID + '"');
-
-                            if (albumInfos.ALB_TITLE) {
-                                albumInfos = {};
-                            }
-
-                            downloadSingleTrack(alternativeTrackInfos.SNG_ID, trackInfos, albumInfos, true).then(() => {
+                            downloadSingleTrack(originalTrackInfos.FALLBACK.SNG_ID, trackInfos, albumInfos, true).then(() => {
                                 resolve();
                             });
-                        }).catch(() => {
-                            const errorMessage = trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + '\n  › Deezer doesn\'t provide the song anymore';
 
-                            errorHandling(errorMessage);
-                        });
-                    }
-                });
+                            const error = {
+                                message: '-',
+                                name:    'notAvailableButAlternative'
+                            };
+
+                            errorHandling(error);
+                        } else {
+                            getTrackAlternative(trackInfos).then((alternativeTrackInfos) => {
+                                downloadStateInstance.removeCurrentlyDownloadingPath(saveFilePath);
+                                downloadStateInstance.remove(originalTrackInfos.SNG_ID);
+
+                                if (albumInfos.ALB_TITLE) {
+                                    albumInfos = {};
+                                }
+
+                                downloadSingleTrack(alternativeTrackInfos.SNG_ID, trackInfos, albumInfos, true).then(() => {
+                                    resolve();
+                                });
+                            }).catch(() => {
+                                const errorMessage = trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + '\n  › Deezer doesn\'t provide the song anymore';
+
+                                errorHandling(errorMessage);
+                            });
+                        }
+                    });
+                } else {
+                    addTrackToPlaylist(saveFilePath, trackInfos);
+
+                    const error = {
+                        message: trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + ' \n  › Song already exists',
+                        name:    'songAlreadyExists'
+                    };
+
+                    errorHandling(error);
+                }
             } else {
-                addTrackToPlaylist(saveFilePath, trackInfos);
-
-                const error = {
-                    message: trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + ' \n  › Song already exists',
-                    name: 'songAlreadyExists'
-                };
-
-                errorHandling(error);
+                errorHandling(trackInfos.ALB_ART_NAME + ' - ' + trackInfos.SNG_TITLE_VERSION + '\n  › Deezer doesn\'t provide the song anymore');
             }
         }
 
@@ -1559,7 +1516,6 @@ function getTrackInfos(id) {
             json: true,
             jar: true
         }).then((response) => {
-            log.debug('Got track infos for "track/' + id + '"');
 
             if (response && 0 === Object.keys(response.error).length && response.results && response.results.DATA) {
                 let trackInfos = response.results.DATA;
@@ -1611,7 +1567,7 @@ function getTrackAlternative(trackInfos) {
             json: true,
             jar: true
         }).then((response) => {
-            log.debug('Got alternative track for "track/' + trackInfos.SNG_ID + '"');
+
             if (response && 0 === Object.keys(response.error).length && response.results && response.results.data && 0 > response.results.data.length) {
                 const foundTracks = response.results.data;
                 let matchingTracks = [];
@@ -1706,7 +1662,6 @@ function getAlbumInfos(id) {
             json: true,
             jar: true
         }).then((response) => {
-            log.debug('Got album infos for "album/' + id + '"');
 
             if (response && 0 === Object.keys(response.error).length && response.results && response.results.DATA && response.results.SONGS) {
                 let albumInfos = response.results.DATA;
@@ -1743,7 +1698,6 @@ function getAlbumInfosOfficialApi(id) {
             url: 'https://api.deezer.com/album/' + id,
             json: true
         }).then((albumInfos) => {
-            log.debug('Got album infos (official api) for "album/' + id + '"');
 
             if (albumInfos && !albumInfos.error) {
                 resolve(albumInfos);
@@ -1776,7 +1730,6 @@ function getTrackLyrics(id) {
             json: true,
             jar: true
         }).then((response) => {
-            log.debug('Got lyrics for "track/' + id + '"');
 
             if (response && 0 === Object.keys(response.error).length && response.results && response.results.LYRICS_ID) {
                 let trackLyrics = response.results;
@@ -1966,15 +1919,12 @@ function downloadTrack(trackInfos, trackQualityId, saveFilePath, numberRetry = 0
     return new Promise((resolve, reject) => {
         const trackDownloadUrl = getTrackDownloadUrl(trackInfos, trackQualityId);
 
-        log.debug('Started downloading "track/' + trackInfos.SNG_ID + '" in "' + trackQualityId + '". Download url: "' + trackDownloadUrl + '"');
-
         requestWithoutCache({
             url: trackDownloadUrl,
             headers: httpHeaders,
             jar: true,
             encoding: null
         }).then((response) => {
-            log.debug('Got download response for "track/' + trackInfos.SNG_ID + '"');
 
             const decryptedTrackBuffer = encryptionService.decryptTrack(response, trackInfos);
 
@@ -2025,7 +1975,6 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
             reject();
         } else {
             if (!fs.existsSync(albumCoverSavePath)) {
-                log.debug('Started downloading album cover for "track/' + trackInfos.SNG_ID + '". Album cover url: "' + albumCoverUrl + '"');
 
                 requestWithoutCache({
                     url: albumCoverUrl,
@@ -2033,17 +1982,12 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
                     jar: true,
                     encoding: null
                 }).then((response) => {
-                    log.debug('Got album cover download response for "track/' + trackInfos.SNG_ID + '"');
 
                     ensureDir(albumCoverSavePath);
                     fs.writeFile(albumCoverSavePath, response, (err) => {
                         if (err) {
-                            log.debug('Error downloading album cover for "track/' + trackInfos.SNG_ID + '"');
-                            log.debug(err);
                             reject();
                         } else {
-                            log.debug('Finished downloading album cover for "track/' + trackInfos.SNG_ID + '"');
-
                             resolve(albumCoverSavePath);
                         }
                     });
@@ -2067,8 +2011,6 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
                     }
                 });
             } else {
-                log.debug('Album cover for "track/' + trackInfos.SNG_ID + '" already exists');
-
                 resolve(albumCoverSavePath);
             }
         }
@@ -2085,10 +2027,8 @@ function downloadAlbumCover(trackInfos, saveFilePath, numberRetry = 0) {
  */
 function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetry = 0) {
     return new Promise((resolve, reject) => {
-        log.debug('Started tagging "track/' + trackInfos.SNG_ID + '"');
 
         downloadAlbumCover(trackInfos, saveFilePath).then((albumCoverSavePath) => {
-            log.debug('Got album cover and started tagging "track/' + trackInfos.SNG_ID + '"');
 
             startTagging(albumCoverSavePath);
         }).catch(() => {
@@ -2310,8 +2250,6 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
                             fs.writeFileSync(lyricsFile, trackMetadata.synchronisedLyrics);
                         }
 
-                        log.debug('Started MP3 tagging "track/' + trackInfos.SNG_ID + '"');
-
                         const writer = new id3Writer(decryptedTrackBuffer);
                         let coverBuffer;
 
@@ -2414,8 +2352,6 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
                         ensureDir(saveFilePath);
                         fs.writeFileSync(saveFilePath, taggedTrackBuffer);
 
-                        log.debug('Finished MP3 tagging "track/' + trackInfos.SNG_ID + '"');
-
                         resolve();
                     } else if ('.flac' === saveFilePathExtension) {
                         if ('' !== trackMetadata.synchronisedLyrics.trim()) {
@@ -2424,8 +2360,6 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
                             ensureDir(lyricsFile);
                             fs.writeFileSync(lyricsFile, trackMetadata.synchronisedLyrics);
                         }
-
-                        log.debug('Started FLAC tagging "track/' + trackInfos.SNG_ID + '"');
 
                         let flacComments = [
                             'SOURCE=Deezer',
@@ -2605,8 +2539,6 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
                         });
 
                         reader.on('end', () => {
-                            log.debug('Finished FLAC tagging "track/' + trackInfos.SNG_ID + '"');
-
                             resolve();
                         });
 
@@ -2614,7 +2546,6 @@ function addTrackTags(decryptedTrackBuffer, trackInfos, saveFilePath, numberRetr
                     }
                 }
             } catch (err) {
-                log.debug('Error tagging "track/' + trackInfos.SNG_ID + '". Number retries: "' + numberRetry + '". Error: ' + err);
 
                 if (10 > numberRetry) {
                     numberRetry += 1;
