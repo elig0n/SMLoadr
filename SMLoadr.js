@@ -122,7 +122,7 @@ let requestWithCache;
 
 function initRequest() {
     httpHeaders = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.129 Safari/537.36',
         'cache-control': 'max-age=0',
         'accept-language': 'en-US,en;q=0.9,en-US;q=0.8,en;q=0.7',
         'accept-charset': 'utf-8,ISO-8859-1;q=0.8,*;q=0.7',
@@ -1866,9 +1866,9 @@ function getValidTrackQuality(trackInfos) {
     }
 
     if (musicQualities.FLAC === selectedMusicQuality) {
-        if (!fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
-            if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
-                if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
+        if (fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
+            if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
+                if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
                     return false;
                 }
                 return musicQualities.MP3_128;
@@ -1879,9 +1879,9 @@ function getValidTrackQuality(trackInfos) {
     }
 
     if (musicQualities.MP3_320 === selectedMusicQuality) {
-        if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
-            if (!fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
-                if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
+        if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
+            if (fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
+                if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
                     return false;
                 }
                 return musicQualities.MP3_128;
@@ -1892,9 +1892,9 @@ function getValidTrackQuality(trackInfos) {
     }
 
     if (musicQualities.MP3_128 === selectedMusicQuality) {
-        if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
-            if (!fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
-                if (!fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
+        if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
+            if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
+                if (fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
                     return false;
                 }
                 return musicQualities.FLAC;
