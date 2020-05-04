@@ -1841,15 +1841,6 @@ function getTrackDownloadUrl(trackInfos, trackQuality) {
 }
 
 /**
- * Parse file size and check if it is defined & is non zero zero
- *
- * @returns {Boolean}
- */
-function fileSizeIsDefined(filesize) {
-    return !('undefined' === typeof filesize || 0 === parseInt(filesize));
-}
-
-/**
  * Get a downloadable track quality.
  *
  * FLAC -> 320kbps -> 128kbps
@@ -1861,14 +1852,14 @@ function fileSizeIsDefined(filesize) {
  * @returns {Object|Boolean}
  */
 function getValidTrackQuality(trackInfos) {
-    if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_MISC)) {
+    if (trackInfos.FILESIZE_MP3_MISC === 0) {
         return musicQualities.MP3_MISC;
     }
 
     if (musicQualities.FLAC === selectedMusicQuality) {
-        if (fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
-            if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
-                if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
+        if (trackInfos.FILESIZE_FLAC === 0) {
+            if (trackInfos.FILESIZE_MP3_320 === 0) {
+                if (trackInfos.FILESIZE_MP3_128 === 0) {
                     return false;
                 }
                 return musicQualities.MP3_128;
@@ -1879,9 +1870,9 @@ function getValidTrackQuality(trackInfos) {
     }
 
     if (musicQualities.MP3_320 === selectedMusicQuality) {
-        if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
-            if (fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
-                if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
+        if (trackInfos.FILESIZE_MP3_320 === 0) {
+            if (trackInfos.FILESIZE_FLAC === 0 ) {
+                if (trackInfos.FILESIZE_MP3_128 === 0) {
                     return false;
                 }
                 return musicQualities.MP3_128;
@@ -1892,9 +1883,9 @@ function getValidTrackQuality(trackInfos) {
     }
 
     if (musicQualities.MP3_128 === selectedMusicQuality) {
-        if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_128)) {
-            if (fileSizeIsDefined(trackInfos.FILESIZE_MP3_320)) {
-                if (fileSizeIsDefined(trackInfos.FILESIZE_FLAC)) {
+        if (trackInfos.FILESIZE_MP3_128 === 0) {
+            if (trackInfos.FILESIZE_MP3_320 === 0) {
+                if (trackInfos.FILESIZE_FLAC === 0) {
                     return false;
                 }
                 return musicQualities.FLAC;

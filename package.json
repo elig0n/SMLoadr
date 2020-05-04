@@ -1,6 +1,6 @@
 {
     "name": "SMLoadr",
-    "version": "1.21.0",
+    "version": "1.22.0",
     "description": "A streaming music downloader written in NodeJS.",
     "author": "SMLoadrDev",
     "license": "CC-BY-NC-4.0",
