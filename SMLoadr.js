@@ -869,7 +869,7 @@ function downloadArtist(id) {
                     filter_role_id: [0],
                     lang: 'us',
                     nb: 500,
-                    nb_songs: -1,
+                    nb_songs: 300,
                     start: 0
                 };
 
@@ -1094,8 +1094,8 @@ function getNumberOfParallelDownloads() {
 
     let numberOfParallel = parseInt(((freeMemoryMb - 300) / approxMaxSizeMb).toString());
 
-    if (20 < numberOfParallel) {
-        numberOfParallel = 20;
+    if (8 > numberOfParallel) {
+        numberOfParallel = 8;
     } else if (1 > numberOfParallel) {
         numberOfParallel = 1;
     }
